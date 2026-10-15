@@ -34,4 +34,4 @@ i=0; while [ $i -lt 16 ]; do shot 320,170 "scene-$i.png" "render-scene.html?t=$(
 shot 1024,194 items.png render-items.html
 
 python3 -I "$HERE/make-pack.py" "$WORK" "$OUT"
-echo "Set it in Claude Code: /plugin configure savvy-progress@local-plugins  ->  spritePack = $OUT"
+echo "In Claude Code: /agents-theme chattini   (themes are found in ~/.claude/sprite-packs)"

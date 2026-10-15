@@ -29,7 +29,7 @@ Needs `curl`, Python 3 with Pillow, and Google Chrome (set `CHROME` for another 
 packs/chattini/build.sh                 # writes ~/.claude/sprite-packs/chattini
 ```
 
-Then in Claude Code: `/plugin configure savvy-progress@local-plugins` and set `spritePack` to that folder. Restart Claude Code.
+Then in Claude Code run `/agents-theme chattini` (or set `theme` to `chattini` in `/plugin configure savvy-progress@local-plugins`). Mix layers if you like: `/agents-theme bench lab` keeps Chattini at the lab's wooden bench.
 
 ## Credits
 

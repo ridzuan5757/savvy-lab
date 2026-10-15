@@ -12,7 +12,19 @@ A Claude Code mod: a progress bar above the prompt and a live panel of subagents
 - **A lab table per agent.** One item per file the agent wrote, edited or deleted: a new file gets a green `+`, an edit a sparkle, a delete a puff. Bash file work is found by comparing `git status` before and after each subagent command; when two agents' commands overlap, the command that names the file keeps it.
 - **A build loop for planned tasks.** A planned task's blob hammers its workstation together until the task starts.
 - **The panel opens again** for each new subagent if it was closed (`autoOpen: any`).
-- **Your own sprite pack (optional).** Set `spritePack` to a folder of terminal frames, one set per agent state, and the panel draws them in place of the blobs. States: `working` (a Write, Edit or Bash in flight), `reading` (Read, Grep, Glob, web), `thinking` (no tool call for 4 s), `done`, `failed`, `planned`, `overload` (context at 80% or more) and `returned` (the first 6 s of a return round). Files: `<state>-<frame>.png` (256×272 px for a 16×8-cell box) and a `pack.json`: `{ "name": "…", "frames": 8, "frameMs": 125, "states": ["working", …] }`. A pack may also bring its own bench: set `"items": N` for `items/<kind>-<state>.png` (states `plain`, `new0`, `new1`, `edit0`, `edit1`, plus `puff0`/`puff1`) and `"bench": true` for `items/bench-left.png`, `bench5.png`, `bench1.png`, `bench-right.png`. Alternates: `"variants": { "done": 3 }` adds `done~1-<frame>.png` and `done~2-<frame>.png`; each run picks one and keeps it. A planned rows' build loop: `"scene": N` for `scene-<frame>.png` (320×170 px, 20×5 cells, played at 8 fps). A pack is yours and stays on your machine; this repository ships recipes only (see `packs/`).
+- **Themes, switchable while running.** The terminal panel draws three layers, each from a theme you choose:
+  - **agents**: the sprite for each subagent, by state;
+  - **items**: the work items on its table;
+  - **bench**: the table, and the build loop in planned rows.
+
+  `lab` is built in (blobs, glassware, wooden bench). Any folder with a `pack.json` in the themes folder (`themesDir`, default `~/.claude/sprite-packs`) is a theme named after the folder, and it may give any of the three layers. Set `theme` for all layers, or `agentsTheme`, `itemsTheme` and `benchTheme` for one each. `/agents-theme` lists the themes and switches them without a restart: `/agents-theme chattini`, `/agents-theme items lab`, `/agents-theme reset`. The choice is kept across sessions.
+
+  **Theme format** (`pack.json`, every layer optional):
+  - agents: `"states"`, `"frames"`, `"frameMs"`, and files `<state>-<frame>.png` (256×272 px, a 16×8-cell box). States: `working` (a Write, Edit or Bash in flight), `reading` (Read, Grep, Glob, web), `thinking` (no tool call for 4 s), `done`, `failed`, `planned`, `overload` (context at 80% or more) and `returned` (the first 6 s of a return round). Alternates: `"variants": { "done": 3 }` for `done~1-<frame>.png` and `done~2-<frame>.png`; each run picks one and keeps it.
+  - items: `"items": N` for `items/<kind>-<state>.png` (80×136 px; `plain`, `new0`, `new1`, `edit0`, `edit1`) and `items/puff0.png`, `puff1.png`.
+  - bench: `"bench": true` for `items/bench-left.png`, `bench5.png`, `bench1.png`, `bench-right.png` (16×34 px per cell), and `"scene": N` for the planned rows' build loop, `scene-<frame>.png` (320×170 px).
+
+  Themes are yours and stay on your machine; this repository ships recipes only (see `packs/`).
 
 The sprite frames in `assets/` are rendered from SVG by the tools in [`tools/render`](../tools/render).
 

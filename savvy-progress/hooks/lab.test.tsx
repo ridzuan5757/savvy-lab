@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-import { MARK_MS, agentState, applyOps, packScene, bashOps, benchTiles, buildFrame, claimOps, packFrame, parsePack, itemSprite, onTable, parseStatus, pickPalette, statusOps, table, tableSlots } from './lab'
+import { MARK_MS, agentState, applyOps, configSlots, packScene, parseThemeCommand, themeLayers, bashOps, benchTiles, buildFrame, claimOps, packFrame, parsePack, itemSprite, onTable, parseStatus, pickPalette, statusOps, table, tableSlots } from './lab'
 import type { BashWindow } from './lab'
 
 const T0 = Date.parse('2026-10-15T08:00:00Z')
@@ -183,4 +183,22 @@ test('sprite pack: an agent state from its run, its tools and its context', asyn
   expect(packFrame(alt, 'done', 3, 'run-7')).toBe(packFrame(alt, 'done', 3, 'run-7'))
   expect(packFrame(alt, 'working', 0, 'run-7')).toBe('/a/working-0.png')
   expect(packScene(alt, 17)).toBe('/a/scene-1.png')
+})
+
+test('themes: layers per theme, slots from settings, and /agents-theme arguments', async () => {
+  const full = parsePack('/c', JSON.stringify({ name: 'C', frames: 8, frameMs: 125, states: ['working'], items: 8, bench: true }))
+  const benchOnly = parsePack('/b', JSON.stringify({ name: 'B', bench: true, scene: 16 }))
+  expect(themeLayers(null)).toEqual(['agents', 'items', 'bench'])
+  expect(themeLayers(full)).toEqual(['agents', 'items', 'bench'])
+  expect(themeLayers(benchOnly)).toEqual(['bench'])
+  expect(parsePack('/x', JSON.stringify({ name: 'X' }))).toBeNull()
+
+  expect(configSlots({})).toEqual({ agents: 'lab', items: 'lab', bench: 'lab' })
+  expect(configSlots({ theme: 'Chattini', itemsTheme: 'lab' })).toEqual({ agents: 'chattini', items: 'lab', bench: 'chattini' })
+
+  expect(parseThemeCommand('')).toEqual({ kind: 'list' })
+  expect(parseThemeCommand('reset')).toEqual({ kind: 'reset' })
+  expect(parseThemeCommand('Chattini')).toEqual({ kind: 'all', theme: 'chattini' })
+  expect(parseThemeCommand('items lab')).toEqual({ kind: 'one', layer: 'items', theme: 'lab' })
+  expect(parseThemeCommand('hats lab').kind).toBe('bad')
 })

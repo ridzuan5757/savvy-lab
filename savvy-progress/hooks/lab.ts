@@ -694,12 +694,15 @@ export function agentState(a: StateInput, at: number): PackState {
   return at - (a.toolEndAt ?? a.startedAt) > THINK_AFTER_MS ? 'thinking' : 'working'
 }
 
+// A theme provides any of three layers: agents (states with frames), items and
+// bench. A pack.json with none of them is no theme.
 export function parsePack(root: string, text: string): SpritePack | null {
   try {
     const d = JSON.parse(text) as Partial<SpritePack>
-    const frames = Math.round(Number(d.frames))
-    const frameMs = Math.round(Number(d.frameMs))
-    if (!Array.isArray(d.states) || !d.states.length || !(frames > 0 && frames <= 64) || !(frameMs >= 40)) return null
+    const states = Array.isArray(d.states) ? d.states.map(String) : []
+    const frames = Math.round(Number(d.frames ?? 0))
+    const frameMs = Math.round(Number(d.frameMs ?? 0))
+    const hasAgents = states.length > 0 && frames > 0 && frames <= 64 && frameMs >= 40
     const items = Math.round(Number(d.items ?? 0))
     const scene = Math.round(Number(d.scene ?? 0))
     const variants: Record<string, number> = {}
@@ -707,20 +710,49 @@ export function parsePack(root: string, text: string): SpritePack | null {
       const n = Math.round(Number(v))
       if (n > 1 && n <= 16) variants[k] = n
     }
-    return {
+    const pack: SpritePack = {
       root: root.replace(/\/+$/, ''),
       name: String(d.name || 'pack').slice(0, 40),
-      frames,
-      frameMs,
-      states: d.states.map(String),
+      frames: hasAgents ? frames : 0,
+      frameMs: hasAgents ? frameMs : 0,
+      states: hasAgents ? states : [],
       items: items > 0 && items <= 64 ? items : 0,
       bench: d.bench === true,
       variants,
       scene: scene > 0 && scene <= 64 ? scene : 0,
     }
+    return themeLayers(pack).length ? pack : null
   } catch {
     return null
   }
+}
+
+export const LAYERS = ['agents', 'items', 'bench'] as const
+export type Layer = (typeof LAYERS)[number]
+export type Slots = Record<Layer, string>
+// The built-in theme: the lab blobs, the glassware and the wooden bench.
+export const LAB = 'lab'
+
+export const themeLayers = (pack: SpritePack | null): Layer[] =>
+  pack === null ? [...LAYERS] : LAYERS.filter(l => (l === 'agents' ? pack.states.length > 0 : l === 'items' ? pack.items > 0 : pack.bench))
+
+// The slots a setting gives: `theme` for every layer, a layer's own setting over it.
+export function configSlots(options: Record<string, unknown>): Slots {
+  const name = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim().toLowerCase() : '')
+  const base = name(options.theme) || LAB
+  return { agents: name(options.agentsTheme) || base, items: name(options.itemsTheme) || base, bench: name(options.benchTheme) || base }
+}
+
+// `/agents-theme` arguments: '' lists, 'reset' clears, '<theme>' sets every
+// layer it provides, '<layer> <theme>' sets one.
+export type ThemeCommand = { kind: 'list' } | { kind: 'reset' } | { kind: 'all'; theme: string } | { kind: 'one'; layer: Layer; theme: string } | { kind: 'bad'; text: string }
+
+export function parseThemeCommand(args: string): ThemeCommand {
+  const words = args.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return { kind: 'list' }
+  if (words.length === 1) return words[0] === 'reset' ? { kind: 'reset' } : { kind: 'all', theme: words[0]! }
+  if (words.length === 2 && (LAYERS as readonly string[]).includes(words[0]!)) return { kind: 'one', layer: words[0] as Layer, theme: words[1]! }
+  return { kind: 'bad', text: 'Use: /agents-theme [theme | agents|items|bench <theme> | reset]' }
 }
 
 // `seed` (a run's id) picks one of a state's alternates and keeps it for that run.

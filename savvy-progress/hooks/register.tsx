@@ -2,8 +2,8 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, ToolCallInput, ToolCallResult } from 'claude-code'
 
 import type { AgentRun, Flow, Panel, Phase, PlannedTask } from '../types'
-import { BLOB_COLS, BLOB_FRAME_MS, BLOB_FRAMES, BLOB_ROWS, ITEM_COLS, ITEM_FRAME_MS, ITEM_ROWS, LAB_CSS, MARK_MS, SPRITE, TABLE_ROWS, applyOps, benchTiles, blobFrame, buildFrame, sceneFrame, BUILD_FRAMES, SCENE_COLS, SETTLE_MS, agentState, packFrame, packScene, parsePack, itemSprite, tableSlots, bashOps, cellRows, claimOps, defaultPalette, labName, labSvg, onTable, paletteOf, parseStatus, pickPalette, sprite, statusOps, table } from './lab'
-import type { BashWindow, FileOp, Run, SpritePack, Status } from './lab'
+import { BLOB_COLS, BLOB_FRAME_MS, BLOB_FRAMES, BLOB_ROWS, ITEM_COLS, ITEM_FRAME_MS, ITEM_ROWS, LAB_CSS, MARK_MS, SPRITE, TABLE_ROWS, applyOps, benchTiles, blobFrame, buildFrame, sceneFrame, BUILD_FRAMES, SCENE_COLS, SETTLE_MS, agentState, configSlots, LAB, LAYERS, packFrame, packScene, parsePack, parseThemeCommand, themeLayers, itemSprite, tableSlots, bashOps, cellRows, claimOps, defaultPalette, labName, labSvg, onTable, paletteOf, parseStatus, pickPalette, sprite, statusOps, table } from './lab'
+import type { BashWindow, FileOp, Layer, Run, Slots, SpritePack, Status } from './lab'
 
 const flow = atom({ plugin: 'savvy-progress', key: 'flow' } as const, null)
 const agents = atom({ plugin: 'savvy-progress', key: 'agents' } as const, [])
@@ -699,30 +699,81 @@ type Snapshot = { root: string; status: Status }
 // frame, which the terminal reads itself. Without them the rows use half-blocks.
 let pluginRoot = ''
 let hasSprites = false
-// The person's own sprite pack (`spritePack`), drawn in place of the blobs.
-let pack: SpritePack | null = null
 // The frame file each Image was last pointed at, so the timer blits only changes.
 const shownFrames = new Map<string, string>()
 
-async function loadPack($: EngineInterface, option: unknown): Promise<void> {
-  pack = null
-  const raw = typeof option === 'string' ? option.trim() : ''
-  if (!raw) return
+// Themes: folders with a pack.json under `themesDir` (and `spritePack`), each
+// giving any of three layers; `lab` is the built-in one. Each layer has its
+// slot, from the settings or from `/agents-theme` (kept in the store).
+const themes = new Map<string, SpritePack>()
+let fromConfig: Slots = { agents: LAB, items: LAB, bench: LAB }
+let slots: Slots = { ...fromConfig }
+// The packs drawing each layer now; null draws the lab.
+let agentPack: SpritePack | null = null
+let itemPack: SpritePack | null = null
+let benchPack: SpritePack | null = null
+
+const expandHome = (path: string, home: string): string => (path === '~' ? home : path.startsWith('~/') ? `${home}${path.slice(1)}` : path)
+
+async function readTheme($: EngineInterface, dir: string): Promise<SpritePack | null> {
   try {
-    const home = (await $.env.get('HOME')) || ''
-    const dir = raw.startsWith('~/') ? `${home}${raw.slice(1)}` : raw
-    pack = parsePack(dir, await $.fs.read(`${dir.replace(/\/+$/, '')}/pack.json`))
+    return parsePack(dir, await $.fs.read(`${dir.replace(/\/+$/, '')}/pack.json`))
   } catch {
-    pack = null
+    return null
   }
 }
+
+async function loadThemes($: EngineInterface, options: Record<string, unknown>): Promise<void> {
+  themes.clear()
+  const home = (await $.env.get('HOME')) || ''
+  const root = expandHome(typeof options.themesDir === 'string' && options.themesDir.trim() ? options.themesDir.trim() : '~/.claude/sprite-packs', home).replace(/\/+$/, '')
+  try {
+    for (const entry of await $.fs.list(root)) {
+      if (entry.kind !== 'dir' || entry.name.toLowerCase() === LAB) continue
+      const theme = await readTheme($, `${root}/${entry.name}`)
+      if (theme) themes.set(entry.name.toLowerCase(), theme)
+    }
+  } catch {
+    // No themes folder: the lab alone.
+  }
+  // `spritePack` (earlier releases) adds one folder by path.
+  const extra = typeof options.spritePack === 'string' ? options.spritePack.trim() : ''
+  if (extra) {
+    const dir = expandHome(extra, home).replace(/\/+$/, '')
+    const theme = await readTheme($, dir)
+    const id = (dir.split('/').pop() || 'pack').toLowerCase()
+    if (theme && !themes.has(id)) themes.set(id, theme)
+  }
+  fromConfig = configSlots(options)
+  if (extra && fromConfig.agents === LAB && fromConfig.items === LAB && fromConfig.bench === LAB) {
+    const id = (expandHome(extra, home).replace(/\/+$/, '').split('/').pop() || '').toLowerCase()
+    if (themes.has(id)) fromConfig = { agents: id, items: id, bench: id }
+  }
+  const saved = (await $.store.get('themeSlots').catch(() => undefined)) as Partial<Slots> | undefined
+  applySlots({ ...fromConfig, ...(saved ?? {}) })
+}
+
+// Points each layer at its theme; a theme that is gone, or lacks the layer, draws the lab.
+function applySlots(next: Slots): void {
+  const pick = (layer: Layer): SpritePack | null => {
+    const theme = themes.get(next[layer])
+    return theme && themeLayers(theme).includes(layer) ? theme : null
+  }
+  slots = { ...next }
+  agentPack = pick('agents')
+  itemPack = pick('items')
+  benchPack = pick('bench')
+  shownFrames.clear()
+}
+
+const slotName = (layer: Layer): string => (layer === 'agents' ? agentPack : layer === 'items' ? itemPack : benchPack) ? slots[layer] : LAB
 
 // The frame a run shows: its pack state's, or its blob's. Running runs move;
 // a finished one moves a while, then holds.
 function runFrame(a: AgentRun, at: number): string {
   const costume = costumeOf(a.type)
   const moving = a.status === 'running' || (a.endedAt !== undefined && at - a.endedAt < SETTLE_MS)
-  if (pack) return packFrame(pack, agentState(a, at), moving ? Math.floor(at / pack.frameMs) : 0, a.id)
+  if (agentPack) return packFrame(agentPack, agentState(a, at), moving ? Math.floor(at / agentPack.frameMs) : 0, a.id)
   return blobFrame(pluginRoot, costume, a.palette ?? defaultPalette(costume), a.status === 'running' ? Math.floor(at / BLOB_FRAME_MS) % BLOB_FRAMES : 0)
 }
 
@@ -880,7 +931,8 @@ export const register: Register = (on, options) => {
     })
 
     await loadAssets($)
-    await loadPack($, options.spritePack)
+    await loadThemes($, options as Record<string, unknown>)
+    await $.command.register({ name: 'agents-theme', description: 'Show or switch the agents panel theme: /agents-theme [theme | agents|items|bench <theme> | reset]' })
     // Plays the sprites: running blobs' frames, and the new, edit and puff frames
     // of fresh items. A blit to a pane that is not drawn answers a deny and costs
     // nothing; a mark that just went stale redraws the table without it.
@@ -897,10 +949,10 @@ export const register: Register = (on, options) => {
           void $.ui.blit({ requestId: PANE, key, source: { file, format: 'png' } }).catch(() => undefined)
         }
         for (const a of list) {
-          if (a.status === 'running' || (pack && a.endedAt !== undefined && at - a.endedAt < SETTLE_MS + BLOB_FRAME_MS)) blit(`blob-${a.id}`, runFrame(a, at))
+          if (a.status === 'running' || (agentPack && a.endedAt !== undefined && at - a.endedAt < SETTLE_MS + BLOB_FRAME_MS)) blit(`blob-${a.id}`, runFrame(a, at))
           for (const f of a.files ?? []) {
             const age = at - f.at
-            if (age < MARK_MS) blit(`item-${a.id}-${f.path}`, itemSprite(pluginRoot, f, at, itemFrame, pack))
+            if (age < MARK_MS) blit(`item-${a.id}-${f.path}`, itemSprite(pluginRoot, f, at, itemFrame, itemPack))
             else if (age < MARK_MS + ITEM_FRAME_MS) expired = true
           }
         }
@@ -908,8 +960,8 @@ export const register: Register = (on, options) => {
         for (const pl of plannedOf(f, list)) {
           const tier = pl.tier in TIER_COLOR ? pl.tier : 'other'
           const step = Math.floor(at / BLOB_FRAME_MS) % BUILD_FRAMES
-          blit(`plan-blob-${pl.n}`, pack ? packFrame(pack, 'planned', Math.floor(at / pack.frameMs), `plan:${pl.n}:${pl.title}`) : buildFrame(pluginRoot, tier, step))
-          blit(`plan-scene-${pl.n}`, (pack && pack.scene ? packScene(pack, step) : sceneFrame(pluginRoot, step)))
+          blit(`plan-blob-${pl.n}`, agentPack ? packFrame(agentPack, 'planned', Math.floor(at / agentPack.frameMs), `plan:${pl.n}:${pl.title}`) : buildFrame(pluginRoot, tier, step))
+          blit(`plan-scene-${pl.n}`, (benchPack && benchPack.scene ? packScene(benchPack, step) : sceneFrame(pluginRoot, step)))
         }
         if (expired) $.ui.invalidate('ui.render')
       })()
@@ -925,6 +977,30 @@ export const register: Register = (on, options) => {
       })()
     })
     return started
+  })
+
+  on('command.run', { command: 'agents-theme' }, async ($, e) => {
+    const cmd = parseThemeCommand(e.args ?? '')
+    const names = [LAB, ...themes.keys()]
+    const list = () =>
+      `Themes: ${names.map(n => `${n} (${themeLayers(n === LAB ? null : (themes.get(n) ?? null)).join(', ')})`).join(' · ')}\nNow: ${LAYERS.map(l => `${l}=${slotName(l)}`).join(', ')}`
+    if (cmd.kind === 'bad') return { text: cmd.text }
+    if (cmd.kind === 'list') return { text: list() }
+    if (cmd.kind === 'reset') {
+      await $.store.delete('themeSlots').catch(() => undefined)
+      applySlots(fromConfig)
+    } else {
+      const theme = cmd.theme === LAB ? null : themes.get(cmd.theme)
+      if (cmd.theme !== LAB && !theme) return { text: `No theme "${cmd.theme}". ${list()}` }
+      const has = themeLayers(theme ?? null)
+      if (cmd.kind === 'one' && !has.includes(cmd.layer)) return { text: `${cmd.theme} has no ${cmd.layer} layer. ${list()}` }
+      const next = { ...slots }
+      for (const layer of cmd.kind === 'one' ? [cmd.layer] : has) next[layer] = cmd.theme
+      await $.store.set('themeSlots', next).catch(() => undefined)
+      applySlots(next)
+    }
+    $.ui.invalidate('ui.render')
+    return { text: list() }
   })
 
   on('command.run', { command: 'agents-info' }, async ($, e) => {
@@ -1275,7 +1351,7 @@ export const register: Register = (on, options) => {
                 source={{ file: blobFile, format: 'png' }}
                 columns={BLOB_COLS}
                 rows={BLOB_ROWS}
-                alt={pack ? pack.name : labName(costume)}
+                alt={agentPack ? agentPack.name : labName(costume)}
               />
             ) : (
               cellRows(sprite(costume, pal, live)).map((runs, i) => pixelLine(runs, `s${i}`))
@@ -1289,7 +1365,7 @@ export const register: Register = (on, options) => {
               <Text color={a.status === 'failed' ? 'red' : a.status === 'done' ? 'green' : color}>{STATUS_GLYPH[a.status]}</Text>
             </Box>
             <Text wrap="truncate-end">
-              <Text color={color}>{pack ? pack.name : labName(costume)}</Text>
+              <Text color={color}>{agentPack ? agentPack.name : labName(costume)}</Text>
               <Text dimColor>
                 {' · '}
                 {tier === 'other' ? a.type : tierWord(tier)} · {model}
@@ -1308,13 +1384,13 @@ export const register: Register = (on, options) => {
                 <Box flexDirection="row" height={ITEM_ROWS}>
                   {slots.shown.map(f => {
                     const key = `item-${a.id}-${f.path}`
-                    const file = itemSprite(pluginRoot, f, at, itemFrame, pack)
+                    const file = itemSprite(pluginRoot, f, at, itemFrame, itemPack)
                     shownFrames.set(key, file)
                     return <ui.Image key={key} source={{ file, format: 'png' }} columns={ITEM_COLS} rows={ITEM_ROWS} alt=" " />
                   })}
                 </Box>
                 <Box flexDirection="row">
-                  {benchTiles(pluginRoot, textW, pack).map(([file, cols], i) => (
+                  {benchTiles(pluginRoot, textW, benchPack).map(([file, cols], i) => (
                     <ui.Image key={`bench-${a.id}-${i}`} source={{ file, format: 'png' }} columns={cols} rows={1} alt=" " />
                   ))}
                 </Box>
@@ -1376,8 +1452,8 @@ export const register: Register = (on, options) => {
               // Waiting for its turn: the tier's blob, a running blob's size, builds
               // its workstation where its table will stand.
               const step = Math.floor(at / BLOB_FRAME_MS) % BUILD_FRAMES
-              const buildFile = pack ? packFrame(pack, 'planned', Math.floor(at / pack.frameMs), `plan:${pl.n}:${pl.title}`) : buildFrame(pluginRoot, tier, step)
-              const sceneFile = (pack && pack.scene ? packScene(pack, step) : sceneFrame(pluginRoot, step))
+              const buildFile = agentPack ? packFrame(agentPack, 'planned', Math.floor(at / agentPack.frameMs), `plan:${pl.n}:${pl.title}`) : buildFrame(pluginRoot, tier, step)
+              const sceneFile = (benchPack && benchPack.scene ? packScene(benchPack, step) : sceneFrame(pluginRoot, step))
               if (hasSprites) {
                 shownFrames.set(`plan-blob-${pl.n}`, buildFile)
                 shownFrames.set(`plan-scene-${pl.n}`, sceneFile)

@@ -1,6 +1,6 @@
 {
   "name": "savvy-progress",
-  "version": "1.4.0-lab.3",
+  "version": "1.5.0-lab.1",
   "description": "Lab blobs fork of savvy-progress: progress bar, agents panel with per-run blob colours, and a lab table of each agent's file work.",
   "author": {
     "name": "johnnyvizz",
@@ -30,10 +30,40 @@
         "any"
       ]
     },
+    "theme": {
+      "type": "string",
+      "title": "Theme",
+      "description": "The theme for every layer: lab (built in) or the name of a folder in the themes folder. /agents-theme switches it while Claude Code runs.",
+      "default": "lab"
+    },
+    "agentsTheme": {
+      "type": "string",
+      "title": "Agents layer theme",
+      "description": "Optional: a different theme for the agent sprites only.",
+      "default": ""
+    },
+    "itemsTheme": {
+      "type": "string",
+      "title": "Items layer theme",
+      "description": "Optional: a different theme for the work items on the table only.",
+      "default": ""
+    },
+    "benchTheme": {
+      "type": "string",
+      "title": "Bench layer theme",
+      "description": "Optional: a different theme for the table and the planned build loop only.",
+      "default": ""
+    },
+    "themesDir": {
+      "type": "string",
+      "title": "Themes folder",
+      "description": "Where themes are found: every folder in it with a pack.json is a theme, named after the folder.",
+      "default": "~/.claude/sprite-packs"
+    },
     "spritePack": {
       "type": "string",
-      "title": "Sprite pack folder",
-      "description": "Optional: a folder of your own terminal sprites, one set per agent state (<state>-<frame>.png and a pack.json). Empty: the lab blobs. A pack replaces the blobs in the terminal panel; it stays on your machine.",
+      "title": "Sprite pack folder (earlier releases)",
+      "description": "Earlier setting: one theme folder by path. Prefer themesDir and theme.",
       "default": ""
     }
   },

@@ -15,11 +15,11 @@ Claude Code plugins for orchestrated subagent work, with a lab of animated blobs
 | [`savvy-progress`](savvy-progress) | Progress bar above the prompt and an agents panel. Each subagent is a lab blob: its gear shows the tier, its colour is its own, and its lab table shows the files it writes, edits and deletes. |
 | [`savvy-flow-autostart`](savvy-flow-autostart) | A `SessionStart` hook that loads the savvy-flow playbook into every session, so each task goes through plan → delegate → review without the slash command. |
 
-## Sprite packs
+## Themes
 
-`savvy-progress` can draw your own sprites in place of the lab blobs (`spritePack` setting; format in [savvy-progress/README.md](savvy-progress/README.md)). A pack can bring its own bench items too.
+`savvy-progress` draws its terminal panel in three layers (agents, items, bench), each from a theme: the built-in `lab`, or a folder you add to `~/.claude/sprite-packs/`. Switch with `/agents-theme` while Claude Code runs; mix layers from different themes. Format in [savvy-progress/README.md](savvy-progress/README.md).
 
-| Pack | How to get it |
+| Theme | How to get it |
 |---|---|
 | [Chattini](packs/chattini) | Raora Panthera's mascot (hololive EN). The recipe downloads her emotes on your machine and builds the pack; this repository ships no official art. Bench items are drawn for the pack: a café counter with pickles, gelato and espresso. |
 
