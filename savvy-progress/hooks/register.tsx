@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, ToolCallInput, ToolCallResult } from 'claude-code'
 
 import type { AgentRun, Flow, Panel, Phase, PlannedTask } from '../types'
-import { BLOB_COLS, BLOB_FRAME_MS, BLOB_FRAMES, BLOB_ROWS, ITEM_COLS, ITEM_FRAME_MS, ITEM_ROWS, LAB_CSS, MARK_MS, SPRITE, TABLE_ROWS, applyOps, benchTiles, blobFrame, buildFrame, sceneFrame, BUILD_FRAMES, SCENE_COLS, SETTLE_MS, agentState, packFrame, parsePack, itemSprite, tableSlots, bashOps, cellRows, claimOps, defaultPalette, labName, labSvg, onTable, paletteOf, parseStatus, pickPalette, sprite, statusOps, table } from './lab'
+import { BLOB_COLS, BLOB_FRAME_MS, BLOB_FRAMES, BLOB_ROWS, ITEM_COLS, ITEM_FRAME_MS, ITEM_ROWS, LAB_CSS, MARK_MS, SPRITE, TABLE_ROWS, applyOps, benchTiles, blobFrame, buildFrame, sceneFrame, BUILD_FRAMES, SCENE_COLS, SETTLE_MS, agentState, packFrame, packScene, parsePack, itemSprite, tableSlots, bashOps, cellRows, claimOps, defaultPalette, labName, labSvg, onTable, paletteOf, parseStatus, pickPalette, sprite, statusOps, table } from './lab'
 import type { BashWindow, FileOp, Run, SpritePack, Status } from './lab'
 
 const flow = atom({ plugin: 'savvy-progress', key: 'flow' } as const, null)
@@ -722,7 +722,7 @@ async function loadPack($: EngineInterface, option: unknown): Promise<void> {
 function runFrame(a: AgentRun, at: number): string {
   const costume = costumeOf(a.type)
   const moving = a.status === 'running' || (a.endedAt !== undefined && at - a.endedAt < SETTLE_MS)
-  if (pack) return packFrame(pack, agentState(a, at), moving ? Math.floor(at / pack.frameMs) : 0)
+  if (pack) return packFrame(pack, agentState(a, at), moving ? Math.floor(at / pack.frameMs) : 0, a.id)
   return blobFrame(pluginRoot, costume, a.palette ?? defaultPalette(costume), a.status === 'running' ? Math.floor(at / BLOB_FRAME_MS) % BLOB_FRAMES : 0)
 }
 
@@ -908,8 +908,8 @@ export const register: Register = (on, options) => {
         for (const pl of plannedOf(f, list)) {
           const tier = pl.tier in TIER_COLOR ? pl.tier : 'other'
           const step = Math.floor(at / BLOB_FRAME_MS) % BUILD_FRAMES
-          blit(`plan-blob-${pl.n}`, pack ? packFrame(pack, 'planned', Math.floor(at / pack.frameMs)) : buildFrame(pluginRoot, tier, step))
-          blit(`plan-scene-${pl.n}`, sceneFrame(pluginRoot, step))
+          blit(`plan-blob-${pl.n}`, pack ? packFrame(pack, 'planned', Math.floor(at / pack.frameMs), `plan:${pl.n}:${pl.title}`) : buildFrame(pluginRoot, tier, step))
+          blit(`plan-scene-${pl.n}`, (pack && pack.scene ? packScene(pack, step) : sceneFrame(pluginRoot, step)))
         }
         if (expired) $.ui.invalidate('ui.render')
       })()
@@ -1376,8 +1376,8 @@ export const register: Register = (on, options) => {
               // Waiting for its turn: the tier's blob, a running blob's size, builds
               // its workstation where its table will stand.
               const step = Math.floor(at / BLOB_FRAME_MS) % BUILD_FRAMES
-              const buildFile = pack ? packFrame(pack, 'planned', Math.floor(at / pack.frameMs)) : buildFrame(pluginRoot, tier, step)
-              const sceneFile = sceneFrame(pluginRoot, step)
+              const buildFile = pack ? packFrame(pack, 'planned', Math.floor(at / pack.frameMs), `plan:${pl.n}:${pl.title}`) : buildFrame(pluginRoot, tier, step)
+              const sceneFile = (pack && pack.scene ? packScene(pack, step) : sceneFrame(pluginRoot, step))
               if (hasSprites) {
                 shownFrames.set(`plan-blob-${pl.n}`, buildFile)
                 shownFrames.set(`plan-scene-${pl.n}`, sceneFile)

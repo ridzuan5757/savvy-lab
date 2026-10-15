@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-import { MARK_MS, agentState, applyOps, bashOps, benchTiles, buildFrame, claimOps, packFrame, parsePack, itemSprite, onTable, parseStatus, pickPalette, statusOps, table, tableSlots } from './lab'
+import { MARK_MS, agentState, applyOps, packScene, bashOps, benchTiles, buildFrame, claimOps, packFrame, parsePack, itemSprite, onTable, parseStatus, pickPalette, statusOps, table, tableSlots } from './lab'
 import type { BashWindow } from './lab'
 
 const T0 = Date.parse('2026-10-15T08:00:00Z')
@@ -176,4 +176,11 @@ test('sprite pack: an agent state from its run, its tools and its context', asyn
   expect(itemSprite('/p', { path: 'a.py', op: 'gone', at: T0 }, T0 + 10, 0, own)).toBe('/c/items/puff0.png')
   expect(benchTiles('/p', 12, own)[0]?.[0]).toBe('/c/items/bench-left.png')
   expect(benchTiles('/p', 12, pack)[0]?.[0]).toBe('/p/assets/items/bench-left.png')
+  const alt = parsePack('/a', JSON.stringify({ name: 'A', frames: 8, frameMs: 125, states: ['working', 'done'], variants: { done: 3 }, scene: 16 }))
+  if (!alt) throw new Error('pack did not parse')
+  const picks = new Set(Array.from({ length: 40 }, (_, i) => packFrame(alt, 'done', 0, `run-${i}`)))
+  expect([...picks].sort()).toEqual(['/a/done-0.png', '/a/done~1-0.png', '/a/done~2-0.png'])
+  expect(packFrame(alt, 'done', 3, 'run-7')).toBe(packFrame(alt, 'done', 3, 'run-7'))
+  expect(packFrame(alt, 'working', 0, 'run-7')).toBe('/a/working-0.png')
+  expect(packScene(alt, 17)).toBe('/a/scene-1.png')
 })

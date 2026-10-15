@@ -1,6 +1,6 @@
 {
   "name": "savvy-progress",
-  "version": "1.4.0-lab.2",
+  "version": "1.4.0-lab.3",
   "description": "Lab blobs fork of savvy-progress: progress bar, agents panel with per-run blob colours, and a lab table of each agent's file work.",
   "author": {
     "name": "johnnyvizz",

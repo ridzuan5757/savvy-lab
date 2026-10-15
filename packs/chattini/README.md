@@ -13,6 +13,8 @@ A savvy-progress sprite pack starring **Chattini**, the mascot of **Raora Panthe
 | overload | spiral eyes |
 | returned | side-eye |
 
+Alternates, one picked per run: done also as a check or sparkles, failed as an ✕ or teary eyes, planned sitting, overload smoking. Planned rows show the café counter being built, with a gelato cone popping on at the end.
+
 ## This folder has no official art
 
 The agent frames are made from Raora Panthera's emotes, which belong to COVER Corporation and their artists. This repository does **not** include them. `build.sh` downloads the emotes from [hololive.wiki](https://hololive.wiki/wiki/Category:Emotes_-_Raora_Panthera) on your own machine and renders the pack there, for your personal, non-commercial use. Follow [hololive's derivative works guidelines](https://hololive.tv/terms) and do not redistribute the built pack.

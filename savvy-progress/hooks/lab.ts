@@ -661,7 +661,9 @@ export const sceneFrame = (root: string, frame: number): string => `${root}/asse
 
 export type PackState = 'working' | 'reading' | 'thinking' | 'done' | 'failed' | 'planned' | 'overload' | 'returned'
 // `items` and `bench`: the pack's own bench items (items/<kind>-<state>.png) and counter tiles.
-export type SpritePack = { root: string; name: string; frames: number; frameMs: number; states: string[]; items: number; bench: boolean }
+// `variants`: alternates per state (<state>~<n>-<frame>.png), one picked per run;
+// `scene`: frames of the planned rows' build loop (scene-<frame>.png).
+export type SpritePack = { root: string; name: string; frames: number; frameMs: number; states: string[]; items: number; bench: boolean; variants: Record<string, number>; scene: number }
 
 const READ_TOOLS = new Set(['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch', 'LS', 'NotebookRead'])
 // No tool call for this long, and a running agent is thinking.
@@ -699,11 +701,34 @@ export function parsePack(root: string, text: string): SpritePack | null {
     const frameMs = Math.round(Number(d.frameMs))
     if (!Array.isArray(d.states) || !d.states.length || !(frames > 0 && frames <= 64) || !(frameMs >= 40)) return null
     const items = Math.round(Number(d.items ?? 0))
-    return { root: root.replace(/\/+$/, ''), name: String(d.name || 'pack').slice(0, 40), frames, frameMs, states: d.states.map(String), items: items > 0 && items <= 64 ? items : 0, bench: d.bench === true }
+    const scene = Math.round(Number(d.scene ?? 0))
+    const variants: Record<string, number> = {}
+    for (const [k, v] of Object.entries(d.variants ?? {})) {
+      const n = Math.round(Number(v))
+      if (n > 1 && n <= 16) variants[k] = n
+    }
+    return {
+      root: root.replace(/\/+$/, ''),
+      name: String(d.name || 'pack').slice(0, 40),
+      frames,
+      frameMs,
+      states: d.states.map(String),
+      items: items > 0 && items <= 64 ? items : 0,
+      bench: d.bench === true,
+      variants,
+      scene: scene > 0 && scene <= 64 ? scene : 0,
+    }
   } catch {
     return null
   }
 }
 
-export const packFrame = (pack: SpritePack, state: string, frame: number): string =>
-  `${pack.root}/${pack.states.includes(state) ? state : pack.states[0]}-${((frame % pack.frames) + pack.frames) % pack.frames}.png`
+// `seed` (a run's id) picks one of a state's alternates and keeps it for that run.
+export function packFrame(pack: SpritePack, state: string, frame: number, seed = ''): string {
+  const s = pack.states.includes(state) ? state : (pack.states[0] ?? state)
+  const n = pack.variants[s] ?? 1
+  const v = n > 1 ? hashOf(`${seed}:${s}`) % n : 0
+  return `${pack.root}/${v ? `${s}~${v}` : s}-${((frame % pack.frames) + pack.frames) % pack.frames}.png`
+}
+
+export const packScene = (pack: SpritePack, frame: number): string => `${pack.root}/scene-${((frame % pack.scene) + pack.scene) % pack.scene}.png`

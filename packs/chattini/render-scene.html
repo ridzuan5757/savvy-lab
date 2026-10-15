@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Chattini Build Loop</title>
+<style>html,body{margin:0;padding:0;background:transparent}svg *{transform-box:view-box}
+.build{animation:fade 2s linear infinite}@keyframes fade{0%,90%{opacity:1}100%{opacity:0}}
+.plank{animation:plank 2s ease-in-out infinite}@keyframes plank{0%,18%{transform:translate(0,22px)}38%,100%{transform:translate(0,0)}}
+.bonk{animation:bonk 2s steps(1) infinite;opacity:0}.bonk.b{animation-name:bonk2}
+@keyframes bonk{0%,44%{opacity:0}45%,50%{opacity:1}51%,57%{opacity:0}58%,63%{opacity:1}64%,100%{opacity:0}}
+@keyframes bonk2{0%,51%{opacity:0}52%,56%{opacity:1}57%,64%{opacity:0}65%,70%{opacity:1}71%,100%{opacity:0}}
+.pop{animation:pop 2s cubic-bezier(.3,1.6,.6,1) infinite;transform-origin:160px 136px}@keyframes pop{0%,72%{transform:scale(0)}82%,100%{transform:scale(1)}}
+.spark{animation:spark 2s ease-out infinite;transform-box:fill-box;transform-origin:center;opacity:0}
+@keyframes spark{0%,80%{opacity:0;transform:scale(.3)}86%{opacity:1;transform:scale(1.2)}94%,100%{opacity:0;transform:scale(.6)}}
+</style></head><body><div id="s"></div>
+<script>
+// Chattini's planned rows: the cafe counter comes together in a 2 s loop (20x5 cells,
+// 16x34 px each), matching the counter tiles in render-items.html.
+const O='#1B2B3A',S='stroke="#1B2B3A" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"';
+const star=(cx,cy,r,f)=>`<path d="M${cx} ${cy-r}L${cx+r*.3} ${cy-r*.3}L${cx+r} ${cy}L${cx+r*.3} ${cy+r*.3}L${cx} ${cy+r}L${cx-r*.3} ${cy+r*.3}L${cx-r} ${cy}L${cx-r*.3} ${cy-r*.3}Z" fill="#FFE27A"/>`;
+const heart=(x,y,s)=>`<path d="M${x} ${y+9*s}C${x-14*s} ${y-1*s} ${x-14*s} ${y-15*s} ${x} ${y-9*s}C${x+14*s} ${y-15*s} ${x+14*s} ${y-1*s} ${x} ${y+9*s}Z" fill="#F98CB0" stroke="${O}" stroke-width="2.2" stroke-linejoin="round"/>`;
+document.getElementById('s').innerHTML=`<svg width="320" height="170" viewBox="0 0 320 170"><g class="build">
+ <rect x="5" y="152" width="12" height="18" rx="2" fill="#F4F2EC"/><rect x="303" y="152" width="12" height="18" rx="2" fill="#F4F2EC"/>
+ <g class="plank"><rect x="0" y="136" width="320" height="2" fill="#FFE3EC"/><rect x="0" y="138" width="320" height="8" fill="#F8C6D6"/><rect x="0" y="146" width="320" height="3" fill="#8FD3F4"/><rect x="0" y="149" width="320" height="5" fill="#E7A9BE"/></g>
+ <g class="bonk">${heart(20,118,.8)}</g><g class="bonk b">${heart(42,104,.6)}</g>
+ <g class="pop"><path d="M144 92L160 136L176 92Z" fill="#E8B26A" ${S}/><path d="M150 98L166 120M156 94L170 110M162 94L154 116" stroke="#C98A4B" stroke-width="2"/><circle cx="152" cy="84" r="13" fill="#F98CB0" ${S}/><circle cx="168" cy="84" r="13" fill="#9BE8C8" ${S}/><circle cx="160" cy="68" r="12" fill="#FFF3D6" ${S}/><circle cx="160" cy="55" r="4" fill="#E94F4F" ${S} stroke-width="2"/></g>
+ <g class="spark">${star(200,56,13)}</g><g class="spark">${star(216,80,7)}</g>
+</g></svg>`;
+const t=Number(new URLSearchParams(location.search).get('t')||0);
+for(const a of document.getAnimations()){a.pause();a.currentTime=t}
+</script></body></html>

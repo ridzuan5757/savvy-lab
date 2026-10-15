@@ -12,7 +12,10 @@
 .returned img{animation:returned 1s ease-in-out infinite}@keyframes returned{0%,100%{transform:translateX(0) rotate(0)}50%{transform:translateX(2%) rotate(-2deg)}}
 </style></head><body><div class="row" id="r"></div>
 <script>
-const S=[['working',33],['reading',13],['thinking',22],['done',19],['failed',50],['planned',46],['overload',25],['returned',45]];
+// One cell per state variant: [state, emote, file suffix]. A state with alternates
+// has one cell each; the pack picks one per run.
+const S=[['working',33,''],['reading',13,''],['thinking',22,''],['done',19,''],['failed',50,''],['planned',46,''],['overload',25,''],['returned',45,''],
+ ['done',31,'~1'],['done',49,'~2'],['failed',32,'~1'],['failed',24,'~2'],['planned',47,'~1'],['overload',27,'~1']];
 document.getElementById('r').innerHTML=S.map(([c,n])=>`<div class="cell ${c}"><img src="source/emote-${n}.png"></div>`).join('');
 const t=Number(new URLSearchParams(location.search).get('t')||0);
 for(const a of document.getAnimations()){a.pause();a.currentTime=t}
