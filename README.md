@@ -13,7 +13,6 @@ Claude Code plugins for orchestrated subagent work, with a lab of animated blobs
 | Plugin | What it does |
 | --- | --- |
 | [`savvy-progress`](savvy-progress) | Progress bar above the prompt and an agents panel. Each subagent is a lab blob: its gear shows the tier, its colour is its own, and its lab table shows the files it writes, edits and deletes. |
-| [`replay-theater`](replay-theater) | `/replay` opens a pane that steps through the file edits Claude made in the last turn, one diff at a time. Forked from [anthropics/claude-code-playground](https://github.com/anthropics/claude-code-playground/tree/main/claude-code/mods/replay-theater) (Apache-2.0) to drop its hint in the band above the prompt. |
 | [`savvy-flow-autostart`](savvy-flow-autostart) | A `SessionStart` hook that loads the savvy-flow playbook into every session, so each task goes through plan → delegate → review without the slash command. |
 
 ## Install
@@ -25,7 +24,6 @@ Claude Code plugins for orchestrated subagent work, with a lab of animated blobs
 2. Install the panel:
    ```
    claude plugin install savvy-progress@local-plugins
-   claude plugin install replay-theater@local-plugins   # optional
    ```
 3. Optional: install savvy-flow from upstream, and the autostart hook. For one project only, install the hook with `--scope local` from that project's folder.
    ```
@@ -53,4 +51,4 @@ It needs Google Chrome and Python 3 with Pillow. See [tools/render](tools/render
 
 ## License
 
-MIT. See [LICENSE](LICENSE). `replay-theater` is Apache-2.0; see [replay-theater/LICENSE](replay-theater/LICENSE).
+MIT. See [LICENSE](LICENSE).

@@ -15,12 +15,6 @@
       "source": "./savvy-progress",
       "description": "Lab blobs fork of savvy-progress (from johnnyvizz/claude-kit 1.2.1).",
       "version": "1.3.0-lab.8"
-    },
-    {
-      "name": "replay-theater",
-      "source": "./replay-theater",
-      "description": "Step through the last turn's file edits one diff at a time (fork of anthropics/claude-code-playground replay-theater: pane only, /replay).",
-      "version": "0.1.0-lab.1"
     }
   ]
 }
