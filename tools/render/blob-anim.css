@@ -1,0 +1,40 @@
+svg *{transform-box:view-box}
+/* Every period divides one second: the mod redraws a running row once a second. */
+.run .sq{animation:sq 1s ease-in-out infinite;transform-origin:15px 26px}
+.c-light.run .sq{animation-duration:.5s}
+@keyframes sq{0%,100%{transform:scale(1,1)}50%{transform:scale(1.05,.94)}}
+.run .sh{animation:sh 1s ease-in-out infinite;transform-origin:15px 26.4px}
+.c-light.run .sh{animation-duration:.5s}
+@keyframes sh{50%{transform:scaleX(1.08)}}
+.run .tassel{animation:swing 1s ease-in-out infinite;transform-origin:20.4px 7.4px}
+@keyframes swing{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(14deg)}}
+.run .twk{animation:twk 1s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.run .twk.b{animation-delay:-.5s}
+@keyframes twk{0%,100%{transform:scale(.4);opacity:.3}50%{transform:scale(1.15);opacity:1}}
+.run .glow{animation:glow 1s ease-in-out infinite}
+@keyframes glow{50%{opacity:.15}}
+.run .knob{animation:spin 1s linear infinite;transform-origin:27.6px 21px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.run .lean{animation:lean 1s ease-in-out infinite;transform-origin:15px 26px}
+@keyframes lean{0%,100%{transform:rotate(0)}50%{transform:rotate(4deg)}}
+.run .drop{animation:drop 1s cubic-bezier(.5,0,1,.6) infinite}
+@keyframes drop{0%{transform:translateY(0);opacity:0}15%{opacity:1}80%{transform:translateY(6px);opacity:1}81%,100%{transform:translateY(6px);opacity:0}}
+.run .ripple{animation:ripple 1s ease-out infinite;transform-origin:26.5px 22.6px}
+@keyframes ripple{0%,78%{transform:scaleY(1)}88%{transform:scaleY(1.6)}100%{transform:scaleY(1)}}
+.run .bub{animation:bub 1s ease-in infinite}
+.run .bub.b{animation-delay:-.33s}.run .bub.c{animation-delay:-.66s}
+@keyframes bub{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(-8px);opacity:0}}
+.run .prop{animation:spin2 .5s linear infinite;transform-origin:15px 4.6px}
+@keyframes spin2{0%{transform:scaleX(1)}50%{transform:scaleX(-1)}100%{transform:scaleX(1)}}
+.run .ck{opacity:0;animation:ck 1s steps(1) infinite}
+.run .ck.b{animation-name:ck2}.run .ck.c{animation-name:ck3}
+@keyframes ck{0%,15%{opacity:0}16%,100%{opacity:1}}
+@keyframes ck2{0%,40%{opacity:0}41%,100%{opacity:1}}
+@keyframes ck3{0%,65%{opacity:0}66%,100%{opacity:1}}
+.ck{opacity:1}
+.run .mag{animation:mag 1s ease-in-out infinite}
+@keyframes mag{0%,100%{transform:translate(0,0)}25%{transform:translate(-1px,1px)}50%{transform:translate(0,2px)}75%{transform:translate(1px,1px)}}
+.run .steam{animation:steam 1s ease-out infinite}
+.run .steam.b{animation-delay:-.5s}
+@keyframes steam{0%{transform:translateY(1px);opacity:0}30%{opacity:.9}100%{transform:translateY(-4px);opacity:0}}
+@media (prefers-reduced-motion: reduce){.run *{animation:none!important}.ck{opacity:1!important}}

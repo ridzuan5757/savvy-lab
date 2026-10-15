@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Lab Items</title>
+<style>html,body{margin:0;padding:0;background:transparent}.row{display:flex}.row>div{width:128px;height:112px}.ov>div{width:48px;height:48px}svg{display:block}</style></head>
+<body><div class="row" id="items"></div><div class="row ov" id="over"></div>
+<script>
+// mode=base: glass, wood and paper, with liquids left out; mode=mask: the liquids alone in white.
+const mode=new URLSearchParams(location.search).get('mode')||'base';
+const BASE=mode==='base',MASK=mode==='mask';
+const GL='#C9DDEC',GF='rgba(215,236,255,.16)',HI='rgba(255,255,255,.75)',INK='#2A2230';
+const liq=d=>MASK?`<path d="${d}" fill="#fff"/>`:'';
+const b=s=>BASE?s:'';
+const ITEMS=[
+ // beaker
+ liq('M47 74H81V102Q81 106 77 106H51Q47 106 47 102Z')+b(`<path d="M42 44H86M45 44V102Q45 108 51 108H77Q83 108 83 102V44" fill="${GF}" stroke="${GL}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+ <path d="M42 44L38 40" stroke="${GL}" stroke-width="3" stroke-linecap="round"/><path d="M71 56H79M73 66H79M71 76H79M73 86H79" stroke="${GL}" stroke-width="2" stroke-linecap="round"/>
+ <path d="M51 52V96" stroke="${HI}" stroke-width="3" stroke-linecap="round"/>`),
+ // erlenmeyer
+ liq('M44 82H84L91 98Q94 106 86 106H42Q34 106 37 98Z')+b(`<path d="M56 30V56L34 100Q31 108 40 108H88Q97 108 94 100L72 56V30" fill="${GF}" stroke="${GL}" stroke-width="3" stroke-linejoin="round"/>
+ <path d="M52 30H76" stroke="${GL}" stroke-width="3.5" stroke-linecap="round"/><path d="M58 60L44 92" stroke="${HI}" stroke-width="3" stroke-linecap="round"/>`),
+ // test-tube rack
+ liq('M38 70H48V96Q48 101 43 101Q38 101 38 96Z M59 62H69V96Q69 101 64 101Q59 101 59 96Z M80 76H90V96Q90 101 85 101Q80 101 80 96Z')+b(`<g fill="${GF}" stroke="${GL}" stroke-width="2.5"><path d="M37 38V96Q37 103 43 103Q49 103 49 96V38"/><path d="M58 38V96Q58 103 64 103Q70 103 70 96V38"/><path d="M79 38V96Q79 103 85 103Q91 103 91 96V38"/></g>
+ <rect x="28" y="80" width="72" height="8" rx="3" fill="#D99A5B" stroke="#8A5A2B" stroke-width="2"/><rect x="30" y="100" width="68" height="8" rx="3" fill="#C98A4B" stroke="#8A5A2B" stroke-width="2"/>
+ <path d="M32 88V100M96 88V100" stroke="#8A5A2B" stroke-width="3"/><path d="M41 44V74M62 44V66M83 44V78" stroke="${HI}" stroke-width="2" stroke-linecap="round"/>`),
+ // paper stack
+ b(`<rect x="34" y="88" width="62" height="18" rx="2" fill="#E9E6DE" stroke="#A8A49A" stroke-width="2" transform="rotate(-4 65 97)"/>
+ <rect x="32" y="82" width="62" height="18" rx="2" fill="#F4F2EC" stroke="#A8A49A" stroke-width="2" transform="rotate(3 63 91)"/>
+ <rect x="33" y="76" width="62" height="20" rx="2" fill="#FFFFFF" stroke="#A8A49A" stroke-width="2"/>
+ <path d="M40 82H86M40 87H80M40 92H84" stroke="#B8C4D0" stroke-width="2" stroke-linecap="round"/><rect x="60" y="72" width="10" height="8" rx="2" fill="#9EA2B0"/>`),
+ // reagent bottle (label is the liquid colour)
+ liq('M47 70H81V92H47Z')+b(`<path d="M56 40H72V50Q84 54 84 66V102Q84 108 78 108H50Q44 108 44 102V66Q44 54 56 50Z" fill="rgba(150,95,40,.45)" stroke="#C99A6A" stroke-width="3" stroke-linejoin="round"/>
+ <rect x="54" y="28" width="20" height="13" rx="3" fill="#3A3946" stroke="#1F1E26" stroke-width="2"/><path d="M50 62V100" stroke="${HI}" stroke-width="3" stroke-linecap="round"/>
+ <path d="M51 76H77M51 82H70" stroke="rgba(255,255,255,.85)" stroke-width="2" stroke-linecap="round"/>`),
+ // notebook (cover is the liquid colour)
+ liq('M30 88H96Q98 88 98 90V104Q98 106 96 106H30Z')+b(`<path d="M30 88H96Q98 88 98 90V104Q98 106 96 106H30Z" fill="none" stroke="#2A2230" stroke-width="2"/>
+ <path d="M32 106H96V109H32Z" fill="#F4F2EC" stroke="#A8A49A" stroke-width="1.5"/><rect x="36" y="86" width="4" height="22" fill="rgba(0,0,0,.25)"/>
+ <path d="M80 88V100L84 96L88 100V88" fill="#F04E5A"/><rect x="50" y="93" width="26" height="6" rx="1.5" fill="rgba(255,255,255,.8)"/>`),
+ // petri dish
+ liq('M34 98A30 6 0 0 0 94 98A30 6 0 0 0 34 98Z')+b(`<ellipse cx="64" cy="100" rx="34" ry="8" fill="${GF}" stroke="${GL}" stroke-width="2.5"/>
+ <path d="M30 100V104A34 8 0 0 0 98 104V100" fill="none" stroke="${GL}" stroke-width="2.5"/><ellipse cx="64" cy="92" rx="36" ry="7" fill="rgba(215,236,255,.12)" stroke="${GL}" stroke-width="2"/>
+ <circle cx="54" cy="98" r="2.5" fill="rgba(255,255,255,.8)"/><circle cx="72" cy="99" r="2" fill="rgba(255,255,255,.7)"/><circle cx="64" cy="96" r="1.6" fill="rgba(255,255,255,.7)"/>`),
+ // round-bottom flask
+ liq('M42 86A22 22 0 0 0 86 86Z')+b(`<path d="M58 30V62A24 24 0 1 0 70 62V30" fill="${GF}" stroke="${GL}" stroke-width="3" stroke-linejoin="round"/>
+ <path d="M54 30H74" stroke="${GL}" stroke-width="3.5" stroke-linecap="round"/><path d="M50 76Q48 84 52 94" stroke="${HI}" stroke-width="3" fill="none" stroke-linecap="round"/>
+ <rect x="54" y="104" width="20" height="5" rx="2" fill="#6A6A7A"/>`),
+];
+const svg=(w,h,body)=>`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
+document.getElementById('items').innerHTML=ITEMS.map(s=>`<div>${svg(128,112,s)}</div>`).join('');
+const star=(cx,cy,r,f)=>`<path d="M${cx} ${cy-r}Q${cx+r*.18} ${cy-r*.18} ${cx+r} ${cy}Q${cx+r*.18} ${cy+r*.18} ${cx} ${cy+r}Q${cx-r*.18} ${cy+r*.18} ${cx-r} ${cy}Q${cx-r*.18} ${cy-r*.18} ${cx} ${cy-r}Z" fill="${f}"/>`;
+const OVER=BASE?[
+ `<circle cx="24" cy="24" r="14" fill="rgba(76,208,125,.25)"/><circle cx="24" cy="24" r="10" fill="#4CD07D" stroke="#1F7A44" stroke-width="2"/><path d="M24 18V30M18 24H30" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`,
+ `<circle cx="24" cy="24" r="17" fill="rgba(76,208,125,.18)"/><circle cx="24" cy="24" r="11" fill="#4CD07D" stroke="#1F7A44" stroke-width="2"/><path d="M24 17V31M17 24H31" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`,
+ star(22,24,16,'#FFE27A')+star(37,11,6,'#F5C542'),
+ star(24,24,11,'#F5C542')+star(10,10,7,'#FFE27A')+star(38,36,5,'#FFE27A'),
+ `<g fill="#B9BCC8" opacity=".9"><circle cx="17" cy="28" r="9"/><circle cx="29" cy="25" r="11"/><circle cx="23" cy="34" r="8"/><circle cx="34" cy="33" r="7"/></g>`,
+ `<g fill="#9EA3B0" opacity=".55"><circle cx="12" cy="24" r="7"/><circle cx="36" cy="20" r="8"/><circle cx="24" cy="12" r="6"/><circle cx="26" cy="34" r="7"/><circle cx="40" cy="36" r="4"/><circle cx="8" cy="38" r="4"/></g>`,
+]:[];
+document.getElementById('over').innerHTML=OVER.map(s=>`<div>${svg(48,48,s)}</div>`).join('');
+</script></body></html>

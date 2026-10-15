@@ -1,0 +1,43 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Build Loop</title>
+<style>html,body{margin:0;padding:0;background:transparent}
+.col{display:flex;flex-direction:column}.blob>div{width:256px;height:272px}.scene>div{width:320px;height:170px}
+svg *{transform-box:view-box}
+.sq{animation:sq .5s ease-in-out infinite;transform-origin:15px 26px}
+@keyframes sq{0%,100%{transform:scale(1,1)}50%{transform:scale(1.04,.95)}}
+.ham{animation:ham .25s ease-in infinite;transform-origin:24px 21px}
+@keyframes ham{0%{transform:rotate(-30deg)}70%{transform:rotate(38deg)}100%{transform:rotate(-30deg)}}
+.build{animation:fade 2s linear infinite}
+@keyframes fade{0%,90%{opacity:1}100%{opacity:0}}
+.plank{animation:plank 2s ease-in-out infinite}
+@keyframes plank{0%,18%{transform:translate(0,22px)}38%,100%{transform:translate(0,0)}}
+.bonk{animation:bonk 2s steps(1) infinite;opacity:0}.bonk.b{animation-name:bonk2}
+@keyframes bonk{0%,44%{opacity:0}45%,50%{opacity:1}51%,57%{opacity:0}58%,63%{opacity:1}64%,100%{opacity:0}}
+@keyframes bonk2{0%,51%{opacity:0}52%,56%{opacity:1}57%,64%{opacity:0}65%,70%{opacity:1}71%,100%{opacity:0}}
+.beaker{animation:pop 2s cubic-bezier(.3,1.6,.6,1) infinite;transform-origin:160px 136px}
+@keyframes pop{0%,72%{transform:scale(0)}82%,100%{transform:scale(1)}}
+.spark{animation:spark 2s ease-out infinite;transform-box:fill-box;transform-origin:center;opacity:0}
+@keyframes spark{0%,80%{opacity:0;transform:scale(.3)}86%{opacity:1;transform:scale(1.2)}94%,100%{opacity:0;transform:scale(.6)}}
+</style></head><body><div class="col" id="g"></div>
+<script src="blob-defs.js"></script>
+<script>
+const mode=new URLSearchParams(location.search).get('mode')||'blob';
+const TIERS=[['fable',4],['heavy',3],['careful',1],['medium',2],['light',0],['explore',6],['other',5]];
+const INKC='#2A2230';
+// A short mallet: it must stay inside the blob's 30-unit box at full swing.
+const mallet=`<g class="ham"><path d="M24 21L26.2 16.6" stroke="#8A5A2B" stroke-width="1" stroke-linecap="round"/><rect x="24.6" y="14.6" width="3.6" height="2.2" rx=".5" fill="#8E92A0" stroke="${INKC}" stroke-width=".35" transform="rotate(27 26.4 15.7)"/></g>`;
+const blobSvg=(key,pi)=>{const m=L[key],p=PAL[pi];
+  return `<svg width="256" height="239" viewBox="0 0 30 28"><ellipse cx="15" cy="26.4" rx="8.5" ry="1.1" fill="#000" opacity=".15"/><g class="sq">${blob(p)}${eyes(m.eyes)}${blush(p)}${MOUTH[m.mouth]}${m.head(p)}${arm(6.4,21.2,p)}${mallet}${arm(23.6,21.2,p)}</g></svg>`};
+// The bench at the real bench tiles' scale: 16×34 px cells, top 2+8 px, edge 8 px, legs below.
+const star=(cx,cy,r)=>`<path d="M${cx} ${cy-r}L${cx+r*.3} ${cy-r*.3}L${cx+r} ${cy}L${cx+r*.3} ${cy+r*.3}L${cx} ${cy+r}L${cx-r*.3} ${cy+r*.3}L${cx-r} ${cy}L${cx-r*.3} ${cy-r*.3}Z" fill="#FFE27A"/>`;
+const scene=`<svg width="320" height="170" viewBox="0 0 320 170"><g class="build">
+ <rect x="6" y="152" width="12" height="18" fill="#6B4A2B"/><rect x="302" y="152" width="12" height="18" fill="#6B4A2B"/>
+ <g class="plank"><rect x="0" y="136" width="320" height="2" fill="#E0A86A"/><rect x="0" y="138" width="320" height="8" fill="#C98A4B"/><rect x="0" y="146" width="320" height="8" fill="#8A5A2B"/></g>
+ <g class="bonk">${star(18,118,11)}</g><g class="bonk b">${star(40,106,8)}</g>
+ <g class="beaker"><path d="M140 66H182M143 66V128Q143 134 149 134H173Q179 134 179 128V66" fill="rgba(215,236,255,.16)" stroke="#C9DDEC" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M146 96H176V128Q176 131 173 131H149Q146 131 146 128Z" fill="#6EC6FF"/><path d="M150 74V122" stroke="rgba(255,255,255,.75)" stroke-width="3" stroke-linecap="round"/></g>
+ <g class="spark">${star(200,56,13)}</g><g class="spark">${star(216,80,7)}</g>
+</g></svg>`;
+document.getElementById('g').className='col '+(mode==='blob'?'blob':'scene');
+document.getElementById('g').innerHTML=mode==='blob'?TIERS.map(([k,p])=>`<div style="display:flex;align-items:center;justify-content:center">${blobSvg(k,p)}</div>`).join(''):`<div>${scene}</div>`;
+const t=Number(new URLSearchParams(location.search).get('t')||0);
+for(const a of document.getAnimations()){a.pause();a.currentTime=t}
+</script></body></html>

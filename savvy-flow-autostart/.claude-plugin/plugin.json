@@ -1,0 +1,5 @@
+{
+  "name": "savvy-flow-autostart",
+  "version": "0.1.0",
+  "description": "SessionStart hook that loads the savvy-flow orchestrator playbook into every session. Requires savvy-flow@claude-kit."
+}
