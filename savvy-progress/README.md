@@ -12,6 +12,7 @@ A Claude Code mod: a progress bar above the prompt and a live panel of subagents
 - **A lab table per agent.** One item per file the agent wrote, edited or deleted: a new file gets a green `+`, an edit a sparkle, a delete a puff. Bash file work is found by comparing `git status` before and after each subagent command; when two agents' commands overlap, the command that names the file keeps it.
 - **A build loop for planned tasks.** A planned task's blob hammers its workstation together until the task starts.
 - **The panel opens again** for each new subagent if it was closed (`autoOpen: any`).
+- **A row for the main session, for daily work.** The panel always shows your main session at the top, with no subagents needed: its sprite by state (working, reading, thinking during a turn; done for a moment after; waiting until your next prompt), a lab table of the files the current turn touched, and its context, cost and time. `showMain` turns it off; `openAtStart` (on by default) opens the panel when a session starts.
 - **Themes, switchable while running.** The terminal panel draws three layers, each from a theme you choose:
   - **agents**: the sprite for each subagent, by state;
   - **items**: the work items on its table;

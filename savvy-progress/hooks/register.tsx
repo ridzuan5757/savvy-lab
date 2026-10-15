@@ -23,6 +23,9 @@ const STEP_BRIEF = `
 
 Progress reporting: before any other work, call \`${STEP_TOOL}\` with \`total\` (your plan in 3-8 steps) and \`done: 0\`; call it again with \`done\` and a few-word \`note\` as each step finishes. It only draws a progress bar.`
 const PANE = 'savvy-agents'
+// The main session's own row, a run with this id; its tool calls carry no agentId.
+const MAIN = 'main'
+let showMain = true
 const PHASES: readonly Phase[] = ['plan', 'design', 'delegate', 'review', 'close']
 const TIERS: readonly string[] = ['fable', 'heavy', 'careful', 'medium', 'light']
 // The tools' schemas are advice to the model, not a check: what a call may ask
@@ -684,6 +687,33 @@ async function autoOpen($: EngineInterface, key: string): Promise<void> {
   await openInFront($)
 }
 
+// The main session's row, made on first need; a turn resets its table and clock.
+const mainRun = (at: number): AgentRun => ({
+  id: MAIN,
+  agentId: MAIN,
+  isMain: true,
+  type: 'main',
+  description: 'Main session',
+  model: '',
+  status: 'done',
+  startedAt: at,
+  endedAt: at - 60_000,
+  contextTokens: 0,
+  contextMax: 1_000_000,
+  tokens: 0,
+  costUsd: 0,
+  steps: 0,
+  round: 1,
+  palette: 5,
+  files: [],
+})
+
+async function ensureMain($: EngineInterface): Promise<void> {
+  if (!showMain) return
+  const at = await $.clock.now()
+  await update($, agents, list => (list.some(a => a.isMain) ? list : [mainRun(at), ...list]))
+}
+
 // Opens the agents pane unless it is already up.
 async function openIfClosed($: EngineInterface): Promise<void> {
   if ((await $.ui.panes()).some(p => p.id === PANE)) return
@@ -749,7 +779,12 @@ async function loadThemes($: EngineInterface, options: Record<string, unknown>):
     const id = (expandHome(extra, home).replace(/\/+$/, '').split('/').pop() || '').toLowerCase()
     if (themes.has(id)) fromConfig = { agents: id, items: id, bench: id }
   }
-  const saved = (await $.store.get('themeSlots').catch(() => undefined)) as Partial<Slots> | undefined
+  let saved: Partial<Slots> | undefined
+  try {
+    saved = (await $.store.get('themeSlots')) as Partial<Slots> | undefined
+  } catch {
+    saved = undefined
+  }
   applySlots({ ...fromConfig, ...(saved ?? {}) })
 }
 
@@ -772,14 +807,14 @@ const slotName = (layer: Layer): string => (layer === 'agents' ? agentPack : lay
 // a finished one moves a while, then holds.
 function runFrame(a: AgentRun, at: number): string {
   const costume = costumeOf(a.type)
-  const moving = a.status === 'running' || (a.endedAt !== undefined && at - a.endedAt < SETTLE_MS)
+  const moving = a.status === 'running' || a.isMain === true || (a.endedAt !== undefined && at - a.endedAt < SETTLE_MS)
   if (agentPack) return packFrame(agentPack, agentState(a, at), moving ? Math.floor(at / agentPack.frameMs) : 0, a.id)
   return blobFrame(pluginRoot, costume, a.palette ?? defaultPalette(costume), a.status === 'running' ? Math.floor(at / BLOB_FRAME_MS) % BLOB_FRAMES : 0)
 }
 
 async function loadAssets($: EngineInterface): Promise<void> {
-  pluginRoot = $.plugin.root
   try {
+    pluginRoot = $.plugin.root
     hasSprites = (await $.fs.exists(`${pluginRoot}/assets/items/bench5.png`)) && (await $.fs.exists(`${pluginRoot}/assets/blobs/other-5-0.png`))
   } catch {
     hasSprites = false
@@ -821,8 +856,7 @@ function fileOps(e: { tool: string } & Record<string, unknown>, result: unknown)
 }
 
 // Records a finished call's file operations on its agent's lab table.
-async function recordFiles($: EngineInterface, e: ToolCallInput, done: ToolCallResult, before: Snapshot | null, start: number, key: string): Promise<ToolCallResult> {
-  const agentId = e.agentId
+async function recordFiles($: EngineInterface, e: ToolCallInput, done: ToolCallResult, before: Snapshot | null, start: number, key: string, agentId: string | undefined): Promise<ToolCallResult> {
   const isBash = agentId !== undefined && e.tool === 'Bash'
   if (!agentId || ('deny' in done && done.deny !== undefined)) return done
   // A failed Bash may still have changed files; a failed Write or Edit did not.
@@ -874,6 +908,9 @@ async function recordFiles($: EngineInterface, e: ToolCallInput, done: ToolCallR
 export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
+    // The main session's row first: nothing below may keep it from the panel.
+    showMain = options.showMain !== 'off'
+    await ensureMain($).catch(() => undefined)
     lang = await detectLang($, options.language)
     await $.tool.register({
       name: 'progress',
@@ -931,7 +968,8 @@ export const register: Register = (on, options) => {
     })
 
     await loadAssets($)
-    await loadThemes($, options as Record<string, unknown>)
+    await loadThemes($, options as Record<string, unknown>).catch(() => applySlots(fromConfig))
+    if (options.openAtStart !== 'off') await openIfClosed($).catch(() => undefined)
     await $.command.register({ name: 'agents-theme', description: 'Show or switch the agents panel theme: /agents-theme [theme | agents|items|bench <theme> | reset]' })
     // Plays the sprites: running blobs' frames, and the new, edit and puff frames
     // of fresh items. A blit to a pane that is not drawn answers a deny and costs
@@ -949,7 +987,7 @@ export const register: Register = (on, options) => {
           void $.ui.blit({ requestId: PANE, key, source: { file, format: 'png' } }).catch(() => undefined)
         }
         for (const a of list) {
-          if (a.status === 'running' || (agentPack && a.endedAt !== undefined && at - a.endedAt < SETTLE_MS + BLOB_FRAME_MS)) blit(`blob-${a.id}`, runFrame(a, at))
+          if (a.status === 'running' || a.isMain || (agentPack && a.endedAt !== undefined && at - a.endedAt < SETTLE_MS + BLOB_FRAME_MS)) blit(`blob-${a.id}`, runFrame(a, at))
           for (const f of a.files ?? []) {
             const age = at - f.at
             if (age < MARK_MS) blit(`item-${a.id}-${f.path}`, itemSprite(pluginRoot, f, at, itemFrame, itemPack))
@@ -1023,7 +1061,7 @@ export const register: Register = (on, options) => {
     const prev = await read($, flow)
     if (isNewFlow(prev, input) && input.title !== undefined) {
       // A new flow starts with a clean list; agents still running stay.
-      await update($, agents, list => list.filter(a => a.status === 'running'))
+      await update($, agents, list => list.filter(a => a.status === 'running' || a.isMain))
     }
     const next = await update($, flow, p => merge(p, input))
     if (next && input.tasks?.length) await autoOpen($, next.title)
@@ -1051,7 +1089,8 @@ export const register: Register = (on, options) => {
   // A subagent's file work: each Write, edit and delete lands on its lab table.
   // Bash is compared by `git status` before and after, so any command shape counts.
   on('tool.call', async ($, e, next) => {
-    const agentId = e.agentId
+    // A subagent's loop, or the main session's own row.
+    const agentId = e.agentId ?? (showMain ? MAIN : undefined)
     const isBash = agentId !== undefined && e.tool === 'Bash'
     // The tool in flight, for the run's sprite state; the panel's own tools do not count.
     const tracked = agentId !== undefined && e.tool !== STEP_TOOL && e.tool !== TOOL
@@ -1077,7 +1116,7 @@ export const register: Register = (on, options) => {
       }
     }
     try {
-      return await recordFiles($, e, await next(e), before, start, key)
+      return await recordFiles($, e, await next(e), before, start, key, agentId)
     } finally {
       // A call that recorded nothing still closes its window, as no rival.
       const w = windows.find(x => x.key === key)
@@ -1148,9 +1187,23 @@ export const register: Register = (on, options) => {
   })
 
   // Each model request of a subagent: live context, tokens and cost.
+  // The main session's turn: its row runs, with a fresh table and clock.
+  on('turn.start', async ($, e, next) => {
+    const started = await next(e)
+    if (e.agentId === undefined && showMain) {
+      await ensureMain($)
+      const at = await $.clock.now()
+      await update($, agents, list =>
+        list.map((a): AgentRun => (a.isMain ? { ...a, status: 'running', startedAt: at, endedAt: undefined, files: [], toolsInFlight: 0, toolEndAt: undefined } : a)),
+      )
+      await update($, now, () => at)
+    }
+    return started
+  })
+
   on('turn.step', async function* ($, e, next) {
     const result = yield* next(e)
-    const agentId = e.agentId
+    const agentId = e.agentId ?? (showMain ? MAIN : undefined)
     const usage = result.usage
     if (!agentId || !usage) return result
 
@@ -1186,6 +1239,11 @@ export const register: Register = (on, options) => {
   })
 
   on('turn.complete', async ($, e, next) => {
+    if (e.agentId === undefined && showMain) {
+      const at = await $.clock.now()
+      await update($, agents, list => list.map((a): AgentRun => (a.isMain ? { ...a, status: 'done', endedAt: at, toolsInFlight: 0 } : a)))
+      await update($, now, () => at)
+    }
     const agentId = e.agentId
     if (agentId) {
       const at = await $.clock.now()
@@ -1226,8 +1284,9 @@ export const register: Register = (on, options) => {
     const p: Panel = await read($, panel)
     const at = Math.max(await read($, now), ...list.map(a => a.startedAt), 0)
 
-    const running = list.filter(a => a.status === 'running').reverse()
-    const finished = list.filter(a => a.status !== 'running').reverse()
+    const main = list.find(a => a.isMain)
+    const running = list.filter(a => a.status === 'running' && !a.isMain).reverse()
+    const finished = list.filter(a => a.status !== 'running' && !a.isMain).reverse()
     const planned = plannedOf(f, list)
     const t = totals(list, at)
     // The pane's title says "Agents"; inside, only the flow's own name.
@@ -1249,7 +1308,7 @@ export const register: Register = (on, options) => {
         onPress={() => update($, panel, prev => ({ ...prev, isDoneCollapsed: !prev.isDoneCollapsed }))}
       />
     )
-    const isEmpty = list.length === 0 && planned.length === 0
+    const isEmpty = list.filter(a => !a.isMain).length === 0 && planned.length === 0 && !main
     const summary = `≈${fmtCost(t.cost)}, ${fmtTokens(t.tokens)} ${s.tokensWord}, ${fmtTime(t.time)}`
 
     if (e.surface === 'desktop' && 'Svg' in ui) {
@@ -1285,6 +1344,9 @@ export const register: Register = (on, options) => {
             <Svg source={headerSvg(W, title, t)} alt={title ? `${title}: ${summary}` : summary} width={W} height={headerHeight(title)} />
             {toggleCompact}
             {isEmpty && <Text dimColor>{s.empty}</Text>}
+            {main && (
+              <Svg key={main.id} source={agentSvg(W, main, at)} alt={`Main session: ${modelName(main.model)}`} width={W} height={66} />
+            )}
             {running.length > 0 && section('h-run', `${s.running} · ${running.length}`)}
             {running.map(a => (
               <Svg key={a.id} source={agentSvg(W, a, at)} alt={`${a.description}: ${modelName(a.model)}, ${s.isRunning}`} width={W} height={66} />
@@ -1430,6 +1492,7 @@ export const register: Register = (on, options) => {
         ) : (
           <Box flexDirection="column" marginTop={1}>
             {isEmpty && <Text dimColor>{s.empty}</Text>}
+            {main && row(main)}
             {running.length > 0 && <Text dimColor>{s.running} · {running.length}</Text>}
             {running.map(row)}
             {finished.length > 0 && toggleDone}

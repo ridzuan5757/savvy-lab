@@ -202,3 +202,10 @@ test('themes: layers per theme, slots from settings, and /agents-theme arguments
   expect(parseThemeCommand('items lab')).toEqual({ kind: 'one', layer: 'items', theme: 'lab' })
   expect(parseThemeCommand('hats lab').kind).toBe('bad')
 })
+
+test('main session: working in a turn, done for a moment after, then waiting', async () => {
+  const main = { isMain: true, status: 'done', endedAt: T0, round: 1, startedAt: T0 - 5000, contextTokens: 0, contextMax: 1_000_000 }
+  expect(agentState(main, T0 + 1000)).toBe('done')
+  expect(agentState(main, T0 + 60_000)).toBe('planned')
+  expect(agentState({ ...main, status: 'running', toolNow: 'Read', toolsInFlight: 1 }, T0)).toBe('reading')
+})

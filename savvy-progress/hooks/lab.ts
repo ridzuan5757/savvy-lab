@@ -675,6 +675,8 @@ export const OVERLOAD_PCT = 80
 export const SETTLE_MS = 10_000
 
 type StateInput = {
+  isMain?: boolean
+  endedAt?: number
   status: string
   round: number
   startedAt: number
@@ -686,6 +688,8 @@ type StateInput = {
 }
 
 export function agentState(a: StateInput, at: number): PackState {
+  // The main session between turns: done for a moment, then waiting for the person.
+  if (a.isMain && a.status !== 'running') return a.endedAt !== undefined && at - a.endedAt < SETTLE_MS ? 'done' : 'planned'
   if (a.status === 'failed') return 'failed'
   if (a.status === 'done') return 'done'
   if (a.contextMax > 0 && (a.contextTokens / a.contextMax) * 100 >= OVERLOAD_PCT) return 'overload'

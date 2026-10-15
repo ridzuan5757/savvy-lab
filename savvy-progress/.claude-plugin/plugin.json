@@ -1,6 +1,6 @@
 {
   "name": "savvy-progress",
-  "version": "1.5.0-lab.1",
+  "version": "1.6.0-lab.1",
   "description": "Lab blobs fork of savvy-progress: progress bar, agents panel with per-run blob colours, and a lab table of each agent's file work.",
   "author": {
     "name": "johnnyvizz",
@@ -65,6 +65,26 @@
       "title": "Sprite pack folder (earlier releases)",
       "description": "Earlier setting: one theme folder by path. Prefer themesDir and theme.",
       "default": ""
+    },
+    "showMain": {
+      "type": "string",
+      "title": "Main session row",
+      "description": "on: the panel always has a row for the main session (its state, files, context and cost), for daily work without subagents. off: subagents only.",
+      "default": "on",
+      "options": [
+        "on",
+        "off"
+      ]
+    },
+    "openAtStart": {
+      "type": "string",
+      "title": "Open at start",
+      "description": "on: the panel opens when a session starts (Claude Code places it from 144 columns). off: it opens with the first subagent or /agents-info.",
+      "default": "on",
+      "options": [
+        "on",
+        "off"
+      ]
     }
   },
   "homepage": "https://github.com/johnnyvizz/claude-kit/tree/main/plugins/savvy-progress",

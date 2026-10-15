@@ -47,6 +47,8 @@ export type AgentRun = {
   toolsInFlight?: number
   /** When this run's latest tool call ended. */
   toolEndAt?: number
+  /** The main session's own row: always there, idle between turns. */
+  isMain?: boolean
 }
 
 export type FileMark = {
