@@ -900,7 +900,7 @@ export const register: Register = (on, options) => {
           if (a.status === 'running' || (pack && a.endedAt !== undefined && at - a.endedAt < SETTLE_MS + BLOB_FRAME_MS)) blit(`blob-${a.id}`, runFrame(a, at))
           for (const f of a.files ?? []) {
             const age = at - f.at
-            if (age < MARK_MS) blit(`item-${a.id}-${f.path}`, itemSprite(pluginRoot, f, at, itemFrame))
+            if (age < MARK_MS) blit(`item-${a.id}-${f.path}`, itemSprite(pluginRoot, f, at, itemFrame, pack))
             else if (age < MARK_MS + ITEM_FRAME_MS) expired = true
           }
         }
@@ -1308,13 +1308,13 @@ export const register: Register = (on, options) => {
                 <Box flexDirection="row" height={ITEM_ROWS}>
                   {slots.shown.map(f => {
                     const key = `item-${a.id}-${f.path}`
-                    const file = itemSprite(pluginRoot, f, at, itemFrame)
+                    const file = itemSprite(pluginRoot, f, at, itemFrame, pack)
                     shownFrames.set(key, file)
                     return <ui.Image key={key} source={{ file, format: 'png' }} columns={ITEM_COLS} rows={ITEM_ROWS} alt=" " />
                   })}
                 </Box>
                 <Box flexDirection="row">
-                  {benchTiles(pluginRoot, textW).map(([file, cols], i) => (
+                  {benchTiles(pluginRoot, textW, pack).map(([file, cols], i) => (
                     <ui.Image key={`bench-${a.id}-${i}`} source={{ file, format: 'png' }} columns={cols} rows={1} alt=" " />
                   ))}
                 </Box>

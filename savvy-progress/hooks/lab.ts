@@ -610,18 +610,21 @@ export const ITEM_FRAME_MS = 250
 const ITEM_KINDS = 8
 const ITEM_LIQUIDS = 6
 
-export function itemSprite(root: string, f: FileMark, at: number, frame: number): string {
-  if (f.op === 'gone') return `${root}/assets/items/puff${frame % 2}.png`
+// A sprite pack with its own items draws those: <kind>-<state>.png in its items folder.
+export function itemSprite(root: string, f: FileMark, at: number, frame: number, pack?: { root: string; items: number } | null): string {
+  const own = pack && pack.items > 0 ? `${pack.root}/items` : ''
+  if (f.op === 'gone') return `${own || `${root}/assets/items`}/puff${frame % 2}.png`
   const h = hashOf(f.path)
   const state = at - f.at < MARK_MS ? `${f.op}${frame % 2}` : 'plain'
+  if (own && pack) return `${own}/${h % pack.items}-${state}.png`
   return `${root}/assets/items/${h % ITEM_KINDS}-${(h >>> 3) % ITEM_LIQUIDS}-${state}.png`
 }
 
 // The bench as tiles at their own size: an Image keeps its picture's shape and
 // does not stretch it. A leg tile at each end, 5-cell planks between, 1-cell
 // planks for the rest. Each entry is [file, columns].
-export function benchTiles(root: string, columns: number): [string, number][] {
-  const tile = (name: string) => `${root}/assets/items/${name}.png`
+export function benchTiles(root: string, columns: number, pack?: { root: string; bench: boolean } | null): [string, number][] {
+  const tile = (name: string) => (pack?.bench ? `${pack.root}/items/${name}.png` : `${root}/assets/items/${name}.png`)
   if (columns < 10) return Array.from({ length: Math.max(1, columns) }, () => [tile('bench1'), 1] as [string, number])
   const middle = columns - 10
   return [
@@ -657,7 +660,8 @@ export const sceneFrame = (root: string, frame: number): string => `${root}/asse
 // A pack is the person's own and lives outside this plugin (`spritePack`).
 
 export type PackState = 'working' | 'reading' | 'thinking' | 'done' | 'failed' | 'planned' | 'overload' | 'returned'
-export type SpritePack = { root: string; name: string; frames: number; frameMs: number; states: string[] }
+// `items` and `bench`: the pack's own bench items (items/<kind>-<state>.png) and counter tiles.
+export type SpritePack = { root: string; name: string; frames: number; frameMs: number; states: string[]; items: number; bench: boolean }
 
 const READ_TOOLS = new Set(['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch', 'LS', 'NotebookRead'])
 // No tool call for this long, and a running agent is thinking.
@@ -694,7 +698,8 @@ export function parsePack(root: string, text: string): SpritePack | null {
     const frames = Math.round(Number(d.frames))
     const frameMs = Math.round(Number(d.frameMs))
     if (!Array.isArray(d.states) || !d.states.length || !(frames > 0 && frames <= 64) || !(frameMs >= 40)) return null
-    return { root: root.replace(/\/+$/, ''), name: String(d.name || 'pack').slice(0, 40), frames, frameMs, states: d.states.map(String) }
+    const items = Math.round(Number(d.items ?? 0))
+    return { root: root.replace(/\/+$/, ''), name: String(d.name || 'pack').slice(0, 40), frames, frameMs, states: d.states.map(String), items: items > 0 && items <= 64 ? items : 0, bench: d.bench === true }
   } catch {
     return null
   }

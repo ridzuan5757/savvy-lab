@@ -14,7 +14,7 @@
       "name": "savvy-progress",
       "source": "./savvy-progress",
       "description": "Lab blobs fork of savvy-progress (from johnnyvizz/claude-kit 1.2.1).",
-      "version": "1.4.0-lab.1"
+      "version": "1.4.0-lab.2"
     }
   ]
 }

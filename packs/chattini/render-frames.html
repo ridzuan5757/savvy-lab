@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Chattini Frames</title>
+<style>html,body{margin:0;background:transparent}
+.row{display:flex}.cell{width:256px;height:272px;overflow:hidden;display:flex;align-items:flex-end;justify-content:center}
+.cell img{width:248px;height:248px;transform-origin:50% 100%;margin-bottom:6px}
+.working img{animation:working .5s ease-in-out infinite}@keyframes working{0%,100%{transform:rotate(-2deg) scale(1,1)}50%{transform:rotate(2deg) scale(1.02,.98)}}
+.reading img{animation:reading 1s ease-in-out infinite}@keyframes reading{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3%) scale(1.03)}}
+.thinking img{animation:thinking 1s ease-in-out infinite}@keyframes thinking{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+.done img{animation:done 1s cubic-bezier(.3,.7,.4,1) infinite}@keyframes done{0%{transform:translateY(0) scale(1.08,.9)}15%{transform:translateY(0) scale(1,1)}45%{transform:translateY(-10%) scale(.96,1.05)}75%{transform:translateY(0) scale(1.06,.93)}100%{transform:translateY(0) scale(1.08,.9)}}
+.failed img{animation:failed .5s ease-in-out infinite}@keyframes failed{0%,100%{transform:translateX(0)}25%{transform:translateX(-3%)}75%{transform:translateX(3%)}}
+.planned img{animation:planned 1s ease-in-out infinite}@keyframes planned{0%,100%{transform:scale(1,1)}50%{transform:scale(1.04,.96)}}
+.overload img{animation:overload 1s ease-in-out infinite}@keyframes overload{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg) translateY(-2%)}}
+.returned img{animation:returned 1s ease-in-out infinite}@keyframes returned{0%,100%{transform:translateX(0) rotate(0)}50%{transform:translateX(2%) rotate(-2deg)}}
+</style></head><body><div class="row" id="r"></div>
+<script>
+const S=[['working',33],['reading',13],['thinking',22],['done',19],['failed',50],['planned',46],['overload',25],['returned',45]];
+document.getElementById('r').innerHTML=S.map(([c,n])=>`<div class="cell ${c}"><img src="source/emote-${n}.png"></div>`).join('');
+const t=Number(new URLSearchParams(location.search).get('t')||0);
+for(const a of document.getAnimations()){a.pause();a.currentTime=t}
+</script></body></html>
