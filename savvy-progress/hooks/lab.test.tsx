@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-import { MARK_MS, applyOps, bashOps, benchTiles, buildFrame, claimOps, itemSprite, onTable, parseStatus, pickPalette, statusOps, table, tableSlots } from './lab'
+import { MARK_MS, agentState, applyOps, bashOps, benchTiles, buildFrame, claimOps, packFrame, parsePack, itemSprite, onTable, parseStatus, pickPalette, statusOps, table, tableSlots } from './lab'
 import type { BashWindow } from './lab'
 
 const T0 = Date.parse('2026-10-15T08:00:00Z')
@@ -155,4 +155,20 @@ test('bench tiles: legs at both ends and planks that add up to the width', async
 test('build loop: a planned blob plays 16 frames of its tier, others fall back to Mocha', async () => {
   expect(buildFrame('/p', 'careful', 17)).toBe('/p/assets/build/careful-1.png')
   expect(buildFrame('/p', 'nope', 0)).toBe('/p/assets/build/other-0.png')
+})
+
+test('sprite pack: an agent state from its run, its tools and its context', async () => {
+  const base = { status: 'running', round: 1, startedAt: T0, contextTokens: 100_000, contextMax: 1_000_000 }
+  expect(agentState({ ...base, toolNow: 'Edit', toolsInFlight: 1 }, T0 + 1000)).toBe('working')
+  expect(agentState({ ...base, toolNow: 'Grep', toolsInFlight: 1 }, T0 + 1000)).toBe('reading')
+  expect(agentState({ ...base, toolEndAt: T0 + 1000 }, T0 + 2000)).toBe('working')
+  expect(agentState({ ...base, toolEndAt: T0 + 1000 }, T0 + 9000)).toBe('thinking')
+  expect(agentState({ ...base, round: 2 }, T0 + 1000)).toBe('returned')
+  expect(agentState({ ...base, contextTokens: 850_000 }, T0 + 1000)).toBe('overload')
+  expect(agentState({ ...base, status: 'done' }, T0)).toBe('done')
+  expect(agentState({ ...base, status: 'failed' }, T0)).toBe('failed')
+  const pack = parsePack('/p/', JSON.stringify({ name: 'Chattini', frames: 8, frameMs: 125, states: ['working', 'planned'] }))
+  expect(pack && packFrame(pack, 'planned', 9)).toBe('/p/planned-1.png')
+  expect(pack && packFrame(pack, 'nope', 0)).toBe('/p/working-0.png')
+  expect(parsePack('/p', '{"frames":0}')).toBeNull()
 })

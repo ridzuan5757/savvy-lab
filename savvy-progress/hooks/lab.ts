@@ -650,3 +650,55 @@ const loop = (frame: number) => ((frame % BUILD_FRAMES) + BUILD_FRAMES) % BUILD_
 export const buildFrame = (root: string, tier: string, frame: number): string =>
   `${root}/assets/build/${LOOKS[tier] ? tier : 'other'}-${loop(frame)}.png`
 export const sceneFrame = (root: string, frame: number): string => `${root}/assets/build/scene-${loop(frame)}.png`
+
+// ---------------------------------------------------------------------------
+// Sprite packs: a folder of frames, one set per agent state, named
+// <state>-<frame>.png, with a pack.json ({ name, frames, frameMs, states }).
+// A pack is the person's own and lives outside this plugin (`spritePack`).
+
+export type PackState = 'working' | 'reading' | 'thinking' | 'done' | 'failed' | 'planned' | 'overload' | 'returned'
+export type SpritePack = { root: string; name: string; frames: number; frameMs: number; states: string[] }
+
+const READ_TOOLS = new Set(['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch', 'LS', 'NotebookRead'])
+// No tool call for this long, and a running agent is thinking.
+export const THINK_AFTER_MS = 4000
+// A return round shows as returned for its first seconds.
+export const RETURNED_MS = 6000
+export const OVERLOAD_PCT = 80
+// A finished run keeps moving this long, then holds its first frame.
+export const SETTLE_MS = 10_000
+
+type StateInput = {
+  status: string
+  round: number
+  startedAt: number
+  contextTokens: number
+  contextMax: number
+  toolNow?: string
+  toolsInFlight?: number
+  toolEndAt?: number
+}
+
+export function agentState(a: StateInput, at: number): PackState {
+  if (a.status === 'failed') return 'failed'
+  if (a.status === 'done') return 'done'
+  if (a.contextMax > 0 && (a.contextTokens / a.contextMax) * 100 >= OVERLOAD_PCT) return 'overload'
+  if (a.round > 1 && at - a.startedAt < RETURNED_MS) return 'returned'
+  if ((a.toolsInFlight ?? 0) > 0 && a.toolNow) return READ_TOOLS.has(a.toolNow) ? 'reading' : 'working'
+  return at - (a.toolEndAt ?? a.startedAt) > THINK_AFTER_MS ? 'thinking' : 'working'
+}
+
+export function parsePack(root: string, text: string): SpritePack | null {
+  try {
+    const d = JSON.parse(text) as Partial<SpritePack>
+    const frames = Math.round(Number(d.frames))
+    const frameMs = Math.round(Number(d.frameMs))
+    if (!Array.isArray(d.states) || !d.states.length || !(frames > 0 && frames <= 64) || !(frameMs >= 40)) return null
+    return { root: root.replace(/\/+$/, ''), name: String(d.name || 'pack').slice(0, 40), frames, frameMs, states: d.states.map(String) }
+  } catch {
+    return null
+  }
+}
+
+export const packFrame = (pack: SpritePack, state: string, frame: number): string =>
+  `${pack.root}/${pack.states.includes(state) ? state : pack.states[0]}-${((frame % pack.frames) + pack.frames) % pack.frames}.png`

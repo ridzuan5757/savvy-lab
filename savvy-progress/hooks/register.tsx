@@ -2,8 +2,8 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, ToolCallInput, ToolCallResult } from 'claude-code'
 
 import type { AgentRun, Flow, Panel, Phase, PlannedTask } from '../types'
-import { BLOB_COLS, BLOB_FRAME_MS, BLOB_FRAMES, BLOB_ROWS, ITEM_COLS, ITEM_FRAME_MS, ITEM_ROWS, LAB_CSS, MARK_MS, SPRITE, TABLE_ROWS, applyOps, benchTiles, blobFrame, buildFrame, sceneFrame, BUILD_FRAMES, SCENE_COLS, itemSprite, tableSlots, bashOps, cellRows, claimOps, defaultPalette, labName, labSvg, onTable, paletteOf, parseStatus, pickPalette, sprite, statusOps, table } from './lab'
-import type { BashWindow, FileOp, Run, Status } from './lab'
+import { BLOB_COLS, BLOB_FRAME_MS, BLOB_FRAMES, BLOB_ROWS, ITEM_COLS, ITEM_FRAME_MS, ITEM_ROWS, LAB_CSS, MARK_MS, SPRITE, TABLE_ROWS, applyOps, benchTiles, blobFrame, buildFrame, sceneFrame, BUILD_FRAMES, SCENE_COLS, SETTLE_MS, agentState, packFrame, parsePack, itemSprite, tableSlots, bashOps, cellRows, claimOps, defaultPalette, labName, labSvg, onTable, paletteOf, parseStatus, pickPalette, sprite, statusOps, table } from './lab'
+import type { BashWindow, FileOp, Run, SpritePack, Status } from './lab'
 
 const flow = atom({ plugin: 'savvy-progress', key: 'flow' } as const, null)
 const agents = atom({ plugin: 'savvy-progress', key: 'agents' } as const, [])
@@ -699,8 +699,32 @@ type Snapshot = { root: string; status: Status }
 // frame, which the terminal reads itself. Without them the rows use half-blocks.
 let pluginRoot = ''
 let hasSprites = false
+// The person's own sprite pack (`spritePack`), drawn in place of the blobs.
+let pack: SpritePack | null = null
 // The frame file each Image was last pointed at, so the timer blits only changes.
 const shownFrames = new Map<string, string>()
+
+async function loadPack($: EngineInterface, option: unknown): Promise<void> {
+  pack = null
+  const raw = typeof option === 'string' ? option.trim() : ''
+  if (!raw) return
+  try {
+    const home = (await $.env.get('HOME')) || ''
+    const dir = raw.startsWith('~/') ? `${home}${raw.slice(1)}` : raw
+    pack = parsePack(dir, await $.fs.read(`${dir.replace(/\/+$/, '')}/pack.json`))
+  } catch {
+    pack = null
+  }
+}
+
+// The frame a run shows: its pack state's, or its blob's. Running runs move;
+// a finished one moves a while, then holds.
+function runFrame(a: AgentRun, at: number): string {
+  const costume = costumeOf(a.type)
+  const moving = a.status === 'running' || (a.endedAt !== undefined && at - a.endedAt < SETTLE_MS)
+  if (pack) return packFrame(pack, agentState(a, at), moving ? Math.floor(at / pack.frameMs) : 0)
+  return blobFrame(pluginRoot, costume, a.palette ?? defaultPalette(costume), a.status === 'running' ? Math.floor(at / BLOB_FRAME_MS) % BLOB_FRAMES : 0)
+}
 
 async function loadAssets($: EngineInterface): Promise<void> {
   pluginRoot = $.plugin.root
@@ -856,6 +880,7 @@ export const register: Register = (on, options) => {
     })
 
     await loadAssets($)
+    await loadPack($, options.spritePack)
     // Plays the sprites: running blobs' frames, and the new, edit and puff frames
     // of fresh items. A blit to a pane that is not drawn answers a deny and costs
     // nothing; a mark that just went stale redraws the table without it.
@@ -864,7 +889,6 @@ export const register: Register = (on, options) => {
         if (!hasSprites) return
         const list = await read($, agents)
         const at = await $.clock.now()
-        const frame = Math.floor(at / BLOB_FRAME_MS) % BLOB_FRAMES
         const itemFrame = Math.floor(at / ITEM_FRAME_MS) % 2
         let expired = false
         const blit = (key: string, file: string) => {
@@ -873,8 +897,7 @@ export const register: Register = (on, options) => {
           void $.ui.blit({ requestId: PANE, key, source: { file, format: 'png' } }).catch(() => undefined)
         }
         for (const a of list) {
-          const costume = costumeOf(a.type)
-          if (a.status === 'running') blit(`blob-${a.id}`, blobFrame(pluginRoot, costume, a.palette ?? defaultPalette(costume), frame))
+          if (a.status === 'running' || (pack && a.endedAt !== undefined && at - a.endedAt < SETTLE_MS + BLOB_FRAME_MS)) blit(`blob-${a.id}`, runFrame(a, at))
           for (const f of a.files ?? []) {
             const age = at - f.at
             if (age < MARK_MS) blit(`item-${a.id}-${f.path}`, itemSprite(pluginRoot, f, at, itemFrame))
@@ -885,7 +908,7 @@ export const register: Register = (on, options) => {
         for (const pl of plannedOf(f, list)) {
           const tier = pl.tier in TIER_COLOR ? pl.tier : 'other'
           const step = Math.floor(at / BLOB_FRAME_MS) % BUILD_FRAMES
-          blit(`plan-blob-${pl.n}`, buildFrame(pluginRoot, tier, step))
+          blit(`plan-blob-${pl.n}`, pack ? packFrame(pack, 'planned', Math.floor(at / pack.frameMs)) : buildFrame(pluginRoot, tier, step))
           blit(`plan-scene-${pl.n}`, sceneFrame(pluginRoot, step))
         }
         if (expired) $.ui.invalidate('ui.render')
@@ -954,6 +977,15 @@ export const register: Register = (on, options) => {
   on('tool.call', async ($, e, next) => {
     const agentId = e.agentId
     const isBash = agentId !== undefined && e.tool === 'Bash'
+    // The tool in flight, for the run's sprite state; the panel's own tools do not count.
+    const tracked = agentId !== undefined && e.tool !== STEP_TOOL && e.tool !== TOOL
+    if (tracked) {
+      try {
+        await update($, agents, list => list.map(a => (a.agentId === agentId ? { ...a, toolNow: e.tool, toolsInFlight: (a.toolsInFlight ?? 0) + 1 } : a)))
+      } catch {
+        // The sprite misses this call.
+      }
+    }
     let before: Snapshot | null = null
     let start = 0
     let key = ''
@@ -974,6 +1006,14 @@ export const register: Register = (on, options) => {
       // A call that recorded nothing still closes its window, as no rival.
       const w = windows.find(x => x.key === key)
       if (w && w.end === undefined) w.end = start
+      if (tracked) {
+        try {
+          const end = await $.clock.now()
+          await update($, agents, list => list.map(a => (a.agentId === agentId ? { ...a, toolsInFlight: Math.max(0, (a.toolsInFlight ?? 1) - 1), toolEndAt: end } : a)))
+        } catch {
+          // The sprite misses this call's end.
+        }
+      }
     }
   })
 
@@ -1221,7 +1261,7 @@ export const register: Register = (on, options) => {
       const slots = tableSlots(textW, files, at)
       const hidden = pictures ? slots.hidden : desk.hidden
       const itemFrame = Math.floor(at / ITEM_FRAME_MS) % 2
-      const blobFile = blobFrame(pluginRoot, costume, pal, isRunning ? Math.floor(at / BLOB_FRAME_MS) % BLOB_FRAMES : 0)
+      const blobFile = runFrame(a, at)
       if (pictures) shownFrames.set(`blob-${a.id}`, blobFile)
       const count = onTable(files, at - MARK_MS).filter(f => f.op !== 'gone').length
       const steps = a.stepTotal ? `${a.stepDone ?? 0}/${a.stepTotal}${a.stepNote ? ' ' + a.stepNote : ''} · ` : ''
@@ -1235,7 +1275,7 @@ export const register: Register = (on, options) => {
                 source={{ file: blobFile, format: 'png' }}
                 columns={BLOB_COLS}
                 rows={BLOB_ROWS}
-                alt={labName(costume)}
+                alt={pack ? pack.name : labName(costume)}
               />
             ) : (
               cellRows(sprite(costume, pal, live)).map((runs, i) => pixelLine(runs, `s${i}`))
@@ -1249,7 +1289,7 @@ export const register: Register = (on, options) => {
               <Text color={a.status === 'failed' ? 'red' : a.status === 'done' ? 'green' : color}>{STATUS_GLYPH[a.status]}</Text>
             </Box>
             <Text wrap="truncate-end">
-              <Text color={color}>{labName(costume)}</Text>
+              <Text color={color}>{pack ? pack.name : labName(costume)}</Text>
               <Text dimColor>
                 {' · '}
                 {tier === 'other' ? a.type : tierWord(tier)} · {model}
@@ -1336,7 +1376,7 @@ export const register: Register = (on, options) => {
               // Waiting for its turn: the tier's blob, a running blob's size, builds
               // its workstation where its table will stand.
               const step = Math.floor(at / BLOB_FRAME_MS) % BUILD_FRAMES
-              const buildFile = buildFrame(pluginRoot, tier, step)
+              const buildFile = pack ? packFrame(pack, 'planned', Math.floor(at / pack.frameMs)) : buildFrame(pluginRoot, tier, step)
               const sceneFile = sceneFrame(pluginRoot, step)
               if (hasSprites) {
                 shownFrames.set(`plan-blob-${pl.n}`, buildFile)

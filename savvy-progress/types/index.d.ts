@@ -42,6 +42,11 @@ export type AgentRun = {
   palette?: number
   /** The files this run wrote, edited or deleted, oldest first. */
   files?: FileMark[]
+  /** The tool this run has in flight (the latest started), for a sprite pack's state. */
+  toolNow?: string
+  toolsInFlight?: number
+  /** When this run's latest tool call ended. */
+  toolEndAt?: number
 }
 
 export type FileMark = {

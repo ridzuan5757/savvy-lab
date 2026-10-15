@@ -1,6 +1,6 @@
 {
   "name": "savvy-progress",
-  "version": "1.3.0-lab.8",
+  "version": "1.4.0-lab.1",
   "description": "Lab blobs fork of savvy-progress: progress bar, agents panel with per-run blob colours, and a lab table of each agent's file work.",
   "author": {
     "name": "johnnyvizz",
@@ -29,6 +29,12 @@
         "savvy",
         "any"
       ]
+    },
+    "spritePack": {
+      "type": "string",
+      "title": "Sprite pack folder",
+      "description": "Optional: a folder of your own terminal sprites, one set per agent state (<state>-<frame>.png and a pack.json). Empty: the lab blobs. A pack replaces the blobs in the terminal panel; it stays on your machine.",
+      "default": ""
     }
   },
   "homepage": "https://github.com/johnnyvizz/claude-kit/tree/main/plugins/savvy-progress",

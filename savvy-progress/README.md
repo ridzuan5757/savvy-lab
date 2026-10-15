@@ -12,6 +12,7 @@ A Claude Code mod: a progress bar above the prompt and a live panel of subagents
 - **A lab table per agent.** One item per file the agent wrote, edited or deleted: a new file gets a green `+`, an edit a sparkle, a delete a puff. Bash file work is found by comparing `git status` before and after each subagent command; when two agents' commands overlap, the command that names the file keeps it.
 - **A build loop for planned tasks.** A planned task's blob hammers its workstation together until the task starts.
 - **The panel opens again** for each new subagent if it was closed (`autoOpen: any`).
+- **Your own sprite pack (optional).** Set `spritePack` to a folder of terminal frames, one set per agent state, and the panel draws them in place of the blobs. States: `working` (a Write, Edit or Bash in flight), `reading` (Read, Grep, Glob, web), `thinking` (no tool call for 4 s), `done`, `failed`, `planned`, `overload` (context at 80% or more) and `returned` (the first 6 s of a return round). Files: `<state>-<frame>.png` (256×272 px for a 16×8-cell box) and a `pack.json`: `{ "name": "…", "frames": 8, "frameMs": 125, "states": ["working", …] }`. A pack is yours and stays on your machine; this repository ships none.
 
 The sprite frames in `assets/` are rendered from SVG by the tools in [`tools/render`](../tools/render).
 
