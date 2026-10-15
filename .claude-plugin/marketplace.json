@@ -14,13 +14,13 @@
       "name": "savvy-progress",
       "source": "./savvy-progress",
       "description": "Lab blobs fork of savvy-progress (from johnnyvizz/claude-kit 1.2.1).",
-      "version": "1.3.0-lab.6"
+      "version": "1.3.0-lab.7"
     },
     {
       "name": "filetree",
       "source": "./filetree",
       "description": "IDE-style file tree (fork of data-goblin/claude-code-filetree 0.2.26): hides on a narrow terminal, returns when wide, sits after the savvy agents panel.",
-      "version": "0.2.26-lab.1"
+      "version": "0.2.26-lab.2"
     }
   ]
 }

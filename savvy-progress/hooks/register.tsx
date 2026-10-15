@@ -673,11 +673,19 @@ async function togglePane($: EngineInterface): Promise<boolean> {
   return true
 }
 
+// Opens the panel and, a moment later, opens it again: another pane that moves
+// itself after ours as it opens (filetree takes the last tab) would otherwise be
+// the one shown. Opening an open pane only retitles it.
+async function openInFront($: EngineInterface): Promise<void> {
+  await $.ui.open({ id: PANE, title: tr().pane }).catch(() => undefined)
+  $.clock.after(300, () => void $.ui.open({ id: PANE, title: tr().pane }).catch(() => undefined))
+}
+
 async function autoOpen($: EngineInterface, key: string): Promise<void> {
   const p = await read($, panel)
   if (p.autoOpenedFor === key) return
   await update($, panel, prev => ({ ...prev, autoOpenedFor: key }))
-  void $.ui.open({ id: PANE, title: tr().pane }).catch(() => undefined)
+  await openInFront($)
 }
 
 // Opens the agents pane unless it is already up.
@@ -685,7 +693,7 @@ async function openIfClosed($: EngineInterface): Promise<void> {
   if ((await $.ui.panes()).some(p => p.id === PANE)) return
   const at = await $.clock.now()
   await update($, now, () => at)
-  void $.ui.open({ id: PANE, title: tr().pane }).catch(() => undefined)
+  await openInFront($)
 }
 
 type Snapshot = { root: string; status: Status }

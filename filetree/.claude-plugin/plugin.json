@@ -1,6 +1,6 @@
 {
   "name": "filetree",
-  "version": "0.2.26-lab.1",
+  "version": "0.2.26-lab.2",
   "description": "IDE-style file tree for Claude Code (savvy-lab fork: hides on a narrow terminal, returns when wide, sits after the savvy agents panel)",
   "types": "./types/index.d.ts",
   "author": {

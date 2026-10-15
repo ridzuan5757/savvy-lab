@@ -108,6 +108,8 @@ let noDock = false
 // Fork addition: auto-hide on a narrow terminal (./autohide.ts).
 let autoHidden = false
 let heldOpen = false
+// Whether the savvy agents panel is open: the tree moves after it only on its first open.
+let savvyOpen = false
 let hideBelow = HIDE_BELOW_DEFAULT
 let home = ''
 let platform: Promise<'linux' | 'darwin' | 'win32'> | null = null
@@ -1369,8 +1371,12 @@ export const register: Register = (on, options) => {
 
   // When the savvy-progress agents panel opens, the tree moves to the tab after it.
   on('ui.open', { id: SAVVY_PANE }, async ($, e, next) => {
+    const wasOpen = savvyOpen
     const result = await next(e)
     if (!('value' in result) || !result.value?.isPlaced) return result
+    savvyOpen = true
+    // A retitle of the open panel (it opens itself again to come to the front) moves nothing.
+    if (wasOpen) return result
     try {
       const mine = (await $.ui.panes()).find(p => p.id === PANE)
       if (mine?.isPlaced) {
@@ -1381,6 +1387,12 @@ export const register: Register = (on, options) => {
     } catch {
       // The tabs keep their order; the agents panel is open either way.
     }
+    return result
+  })
+
+  on('ui.close', { id: SAVVY_PANE }, async ($, e, next) => {
+    const result = await next(e)
+    savvyOpen = false
     return result
   })
 
